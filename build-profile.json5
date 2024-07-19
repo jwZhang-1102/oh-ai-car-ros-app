@@ -1,0 +1,49 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.cer",
+          "storePassword": "0000001B12AF6431F2BE5C2262EB0D6F5A19E58DFD7817326A293A230CDF5BF65721203B1953839CB11BDA",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B17A9A8E3440FB33F5FB031D3A51F42BB21F64D80BB2D6C50847F88672FAC88893BFC5118455D4B",
+          "profile": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p12"
+        }
+      }
+    ],
+    "compileSdkVersion": 9,
+    "compatibleSdkVersion": 9,
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
