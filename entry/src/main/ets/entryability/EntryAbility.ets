@@ -4,6 +4,8 @@ import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import { ScreenUtils } from "../utils/ScreenUtils"
+import { TCPClientManager } from '../tcp/TCPClientManager';
+import { TCPClientSendUtils } from '../tcp/TCPClientSendUtils';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -32,6 +34,16 @@ export default class EntryAbility extends UIAbility {
     ScreenUtils.keepScreenOn(this.context, true)
     // 设置标题栏不可见
     ScreenUtils.setSystemBar(this.context)
+
+    // TCP IP、端口定义
+    TCPClientManager.getInstance().initNetAddress({
+      // address: "192.168.1.11",
+      address: "192.168.8.67",
+      port: 6000
+    })
+    // 创建TCP连接
+    TCPClientManager.getInstance().connect();
+    TCPClientSendUtils.getInstance().init();
 
   }
 

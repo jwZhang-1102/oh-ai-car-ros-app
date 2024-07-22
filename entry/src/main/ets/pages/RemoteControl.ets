@@ -1,6 +1,8 @@
 /**
  * 遥控界面
  */
+import { carApi, direction } from '../CarUtill/CarApi';
+
 @Entry
 @Component
 struct RemoteControl {
@@ -16,6 +18,11 @@ struct RemoteControl {
             Button("前")// .backgroundColor(0xF9CF93)
               .width('100%')
               .height('100%')
+              .onClick(() => {
+                carApi.carRunDirection(direction.front)
+
+              })
+
           }
 
           GridItem()

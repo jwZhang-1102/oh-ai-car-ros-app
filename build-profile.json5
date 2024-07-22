@@ -3,15 +3,14 @@
     "signingConfigs": [
       {
         "name": "default",
-        "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.cer",
-          "storePassword": "0000001B12AF6431F2BE5C2262EB0D6F5A19E58DFD7817326A293A230CDF5BF65721203B1953839CB11BDA",
+          "certpath": "C:/Users/17151/.ohos/config/openharmony/default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.cer",
+          "storePassword": "0000001BED1FADC8FB4EB2CFE47A25AB9CBCF7427A57A4057685D2EE5EB9012E002DB3723222EC629D239C",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B17A9A8E3440FB33F5FB031D3A51F42BB21F64D80BB2D6C50847F88672FAC88893BFC5118455D4B",
-          "profile": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p7b",
+          "keyPassword": "0000001B0000740FD1E0E919E176990590300623F61E8C7E7A6206DD0B0A7134AD5B9389C2322A81994C15",
+          "profile": "C:/Users/17151/.ohos/config/openharmony/default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p12"
+          "storeFile": "C:/Users/17151/.ohos/config/openharmony/default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p12"
         }
       }
     ],
