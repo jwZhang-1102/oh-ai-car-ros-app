@@ -34,17 +34,20 @@ export default class EntryAbility extends UIAbility {
     ScreenUtils.keepScreenOn(this.context, true)
     // 设置标题栏不可见
     ScreenUtils.setSystemBar(this.context)
+    this.initNetConfig();
 
+  }
+
+  private initNetConfig() {
+    let address = "192.168.1.11";
     // TCP IP、端口定义
     TCPClientManager.getInstance().initNetAddress({
-      // address: "192.168.1.11",
-      address: "192.168.8.67",
+      address: address,
       port: 6000
-    })
+    });
     // 创建TCP连接
     TCPClientManager.getInstance().connect();
     TCPClientSendUtils.getInstance().init();
-
   }
 
   onWindowStageDestroy(): void {
