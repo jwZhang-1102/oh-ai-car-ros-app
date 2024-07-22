@@ -4,6 +4,7 @@
 import { carApi } from '../CarUtill/CarApi';
 import { CarDirection } from '../CarUtill/CarEnum';
 import { CarBtnComponents } from '../components/CarBtnComponents';
+import { CarRockerComponents } from '../components/CarRockerComponents';
 
 @Entry
 @Component
@@ -17,10 +18,15 @@ struct RemoteControl {
         CarBtnComponents()
           .width('210vp')
           .height('210vp')
-          // .visibility(Visibility.None)
+          .visibility(Visibility.None)
+          .border({width:1,color:Color.Black})
+
 
         // 遥感控制
-
+        CarRockerComponents()
+          .width('210vp')
+          .height('210vp')
+          .border({width:1,color:Color.Black})
 
       }
 
