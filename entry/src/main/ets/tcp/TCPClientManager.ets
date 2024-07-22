@@ -10,6 +10,9 @@ class SocketInfo {
   remoteInfo: socket.SocketRemoteInfo = {} as socket.SocketRemoteInfo;
 }
 
+/**
+ * 全局tcp工具
+ */
 export class TCPClientManager {
   /**私有静态实例，懒汉式单例*/
   private static instance: TCPClientManager;

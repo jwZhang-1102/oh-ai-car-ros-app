@@ -33,9 +33,9 @@ export class TCPClientSendUtils {
       // let p: TCPSendTypeModel = newPant(this.pant)
       // // 解析心跳包对象成为json形式
       // let pant: string = JSON.stringify(p)
-      let pant: string = "hello"
+      // let pant: string = "hello"
       // 发送数据
-      let state: boolean = await TCPClientManager.getInstance().sendMessage(pant + '\n')
+      // let state: boolean = await TCPClientManager.getInstance().sendMessage(pant + '\n')
       // // 如果发送失败，那么重置心跳包的状态
       // if (state == false) this._pant = -1;
       //   5秒发一次数据

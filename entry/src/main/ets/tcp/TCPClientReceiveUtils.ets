@@ -8,6 +8,7 @@
 const TAG = "TCPClientReceiveUtils";
 
 export class TCPClientReceiveUtils {
+  // @todo 这个里面写的是接收到数据后的响应
   public static receiveMessage() {
     //   // 如果拿到的是空字符串那么结束判断
     //   if (!message) return;
