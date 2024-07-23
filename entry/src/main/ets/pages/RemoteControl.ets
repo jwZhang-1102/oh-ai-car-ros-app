@@ -10,34 +10,111 @@ import { CarRockerComponents } from '../components/CarRockerComponents';
 @Component
 struct RemoteControl {
   @State message: string = 'Hello World';
+  /**当前控制模式*/
+  @State nowCtrlModel: CtrlModel = CtrlModel.Button
+  /**控制文本列表*/
+  ctrlTextTextList: string[] = ["按钮", "遥杆"]
+  /**控制模式列表*/
+  ctrlModeList: CtrlModel[] = [CtrlModel.Button, CtrlModel.Rocker]
 
   build() {
     Row() {
-      Column() {
-        // 操控按钮
-        CarBtnComponents()
-          .width('210vp')
-          .height('210vp')
-          .visibility(Visibility.None)
-          .border({width:1,color:Color.Black})
+      RelativeContainer() {
+        Column() {
+          ForEach(this.ctrlTextTextList, (item: string, index: number) => {
+            MyTab({
+              // 如果当前控制模式为为当前组件所属的控制模式，那么状态选中
+              state: this.nowCtrlModel == this.ctrlModeList[index],
+              text: item
+            }).onClick(() => {
+              // 当受到点击时将当前控制模式置为当前组件所属的控制模式
+              state: this.nowCtrlModel = this.ctrlModeList[index]
+            })
+
+          }, (item: string) => item)
+        }
+        .id("tabs")
+        .alignRules({
+          left: { anchor: "__container__", align: HorizontalAlign.Start },
+          center: { anchor: "__container__", align: VerticalAlign.Center }
+        })
+
+        Stack() {
+
+          // 操控按钮
+          CarBtnComponents()
+            .border({ width: 1, color: Color.Black })
+            .visibility(//如果选中控制模式为当前组件的控制模式，那么显示
+              this.nowCtrlModel == CtrlModel.Button ?
+              Visibility.Visible :
+              Visibility.None)
 
 
-        // 遥感控制
-        CarRockerComponents()
-          .width('210vp')
-          .height('210vp')
-          .border({width:1,color:Color.Black})
+          // 遥感控制
+          CarRockerComponents()// .width('210vp')
+            // .height('210vp')
+            .border({ width: 1, color: Color.Black })
+            .visibility(//如果选中控制模式为当前组件的控制模式，那么显示
+              this.nowCtrlModel == CtrlModel.Rocker ?
+              Visibility.Visible :
+              Visibility.None)
+        }
+        .width('210vp')
+        .height('210vp')
+        .id("ctrl")
+        .alignRules({
+          center: { anchor: "__container__", align: VerticalAlign.Center },
+          middle: { anchor: "__container__", align: HorizontalAlign.Center }
+        })
 
       }
-
       .width(0)
       .layoutWeight(1)
+      .height('100%')
 
       Column() {
       }
       .width(0)
       .layoutWeight(1)
     }
+
     .height('100%')
+  }
+}
+
+enum CtrlModel {
+  Button = 0,
+  Rocker = 1,
+}
+
+// 标签
+@Component
+struct MyTab {
+  @Prop state: boolean = false;
+  @Prop text: string = "hello";
+  /**选中颜色*/
+  trueColor: string = '#add'
+  /**未被选中颜色*/
+  falseColor: string = '#cff'
+
+  build() {
+    Stack() {
+      Text(this.text)
+        .width('20vp')
+        .fontSize('20fp')
+    }
+    .backgroundColor(this.state ? this.trueColor : this.falseColor)
+    .border({
+      radius: {
+        topRight: '15vp',
+        bottomRight: '15vp'
+      }
+    })
+    .padding({
+      left: '15vp',
+      right: '15vp',
+      top: '10vp',
+      bottom: '10vp',
+    })
   }
 }
