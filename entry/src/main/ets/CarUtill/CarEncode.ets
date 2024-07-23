@@ -9,7 +9,6 @@ export namespace CarEncode {
 
 
   /**
-   * /**
    * 车辆控制编码
    * @param speed_x -100 ~ 100
    * @param speed_y -100 ~ 100
@@ -46,9 +45,36 @@ export namespace CarEncode {
    * @param d
    * @returns
    */
-  export function ButCarEncode(d: CarDirection): string {
+  export function ButtonCarEncode(d: CarDirection): string {
     return BaseEncode('15',
       numberToHex(d, 2)
+    );
+  }
+
+  /**
+   *按钮车辆控制
+   * @param d
+   * @returns
+   */
+  export function UpSpeedCarEncode(l1: number, l2: number, r1: number, r2: number): string {
+    let format = (x: number) => {
+      x = Math.round(x); // 四舍五入
+      if (x < 0) x += 256 // 如果是负数那么格式化成正数
+      return x;
+    }
+
+    // 格式化字符串
+    l1 = format(l1);
+    l2 = format(l2);
+    r1 = format(r1);
+    r2 = format(r2);
+
+    // 返回编码信息
+    return BaseEncode('21',
+      numberToHex(l1, 2),
+      numberToHex(l2, 2),
+      numberToHex(r1, 2),
+      numberToHex(r2, 2),
     );
   }
 
@@ -58,7 +84,10 @@ export namespace CarEncode {
    * @param type
    * @param data
    */
-  function BaseEncode(type: string, data: string) {
+  function BaseEncode(type: string, ...datas: string[]) {
+
+    let data: string = datas.join('')
+
     // 8为基础数据长度
     let size = numberToHex(data.length + 2, 2);
 

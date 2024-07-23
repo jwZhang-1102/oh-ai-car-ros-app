@@ -9,7 +9,7 @@ class CarApi {
    * @param d
    */
   carBtnCtrl(d: CarDirection) {
-    this.send(CarEncode.ButCarEncode(d))
+    this.send(CarEncode.ButtonCarEncode(d))
   }
 
   send(message: string) {
