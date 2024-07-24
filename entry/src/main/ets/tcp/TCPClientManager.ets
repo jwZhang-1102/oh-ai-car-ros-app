@@ -69,6 +69,9 @@ export class TCPClientManager {
 
     this.socket = socket.constructTCPSocketInstance();
     try {
+      // 绑定本机IP地址（在3.2R）
+      await this.socket.bind({ address: '0.0.0.0', family: 1 })
+      // 绑定目标服务端IP地址
       await this.socket.connect(this.options)
       this.showInfo(`连接成功`)
       // 信号接收
