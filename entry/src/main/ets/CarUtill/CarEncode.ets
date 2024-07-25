@@ -52,7 +52,7 @@ export namespace CarEncode {
   }
 
   /**
-   *按钮车辆控制
+   *四轮单独控制
    * @param d
    * @returns
    */
@@ -86,16 +86,16 @@ export namespace CarEncode {
    */
   function BaseEncode(type: string, ...datas: string[]) {
 
-    let data: string = datas.join('')
+    let info: string = datas.join('')
 
     // 8为基础数据长度
-    let size = numberToHex(data.length + 2, 2);
+    let size = numberToHex(info.length + 2, 2);
 
     // 数据拼接
     let code = '01' + //车辆类型
       type + // 命令标记
       size + // 数据长度
-      data // 数据主体
+      info // 数据主体
 
     code += numberToHex(getCheckChecksum(code), 2);
 
