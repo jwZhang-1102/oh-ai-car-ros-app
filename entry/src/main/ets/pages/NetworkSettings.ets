@@ -114,10 +114,13 @@ struct LoginComponent {
       .LoginComponentLineStyle()
 
       Button("连接").onClick(() => {
-        this.initNetConfig()
+
         // 保存网络配置
         this.saveNetConfig()
+
+        this.initNetConfig()
       })
+        .width('200vp')
     }
   }
 

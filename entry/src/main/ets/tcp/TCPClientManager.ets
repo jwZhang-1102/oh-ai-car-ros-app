@@ -39,8 +39,8 @@ export class TCPClientManager {
       address: "127.0.0.1",
       // family?: number,
       port: 12345
-    }
-    // timeout?: number;
+    },
+    timeout: 100
   }
 
   /**
@@ -65,7 +65,10 @@ export class TCPClientManager {
     let isConnect = await this.isConnect()
 
     // 如果当前是连接成功的，那么先断开连接
-    if (isConnect == true) this.socket.close()
+    if (isConnect == true) {
+      this.socket.close();
+      this.socket = undefined;
+    }
 
     this.socket = socket.constructTCPSocketInstance();
     try {
@@ -100,6 +103,10 @@ export class TCPClientManager {
       })
       return true;
     } catch {
+      // 如果连接失败需要断开连接
+      // 在Mate50 HarmonyOS 4.2.0.130 API 9上连接失败 如果不断开导致下次无法正常连接
+      this.socket.close();
+      this.socket = undefined;
       return false;
     }
 
