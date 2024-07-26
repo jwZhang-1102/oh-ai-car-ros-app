@@ -5,6 +5,7 @@ import { carApi } from '../CarUtill/CarApi';
 import { CarDirection } from '../CarUtill/CarEnum';
 import { CarBtnComponents } from '../components/CarBtnComponents';
 import { CarRockerComponents } from '../components/CarRockerComponents';
+import { VideoComponents } from '../components/VideoComponents';
 
 @Entry
 @Component
@@ -73,9 +74,13 @@ struct RemoteControl {
       .height('100%')
 
       Column() {
+        // 视频播放组件
+        VideoComponents()
       }
       .width(0)
+      .height('100%')
       .layoutWeight(1)
+      .justifyContent(FlexAlign.Center)
     }
 
     .height('100%')

@@ -6,6 +6,8 @@ import { TCPClientSendUtils } from '../tcp/TCPClientSendUtils'
 import promptAction from '@ohos.promptAction'
 import router from '@ohos.router'
 import { PreferencesUtils } from '../utils/PreferencesUtils'
+import { VideoComponents } from '../components/VideoComponents'
+
 
 @Entry
 @Component
@@ -54,8 +56,8 @@ struct LoginComponent {
   FontSize: Length = '20fp'
   //
   @State ip: string = "192.168.1.11"
-  @State port: string = "6000"
-  @State video: string = "6500"
+  @State tcpPort: string = "6000"
+  @State videoPort: string = "6500"
   /**
    * 连接成功运行
    */
@@ -94,8 +96,8 @@ struct LoginComponent {
           .width(this.TextWidth)
           .textAlign(TextAlign.End)
           .fontSize(this.FontSize)
-        TextInput({ text: this.port })
-          .onChange((v) => this.port = v)
+        TextInput({ text: this.tcpPort })
+          .onChange((v) => this.tcpPort = v)
           .layoutWeight(1)
       }
       .width('100%')
@@ -107,8 +109,8 @@ struct LoginComponent {
           .width(this.TextWidth)
           .textAlign(TextAlign.End)
           .fontSize(this.FontSize)
-        TextInput({ text: this.video })
-          .onChange((v) => this.video = v)
+        TextInput({ text: this.videoPort })
+          .onChange((v) => this.videoPort = v)
           .layoutWeight(1)
       }.width('100%')
       .LoginComponentLineStyle()
@@ -117,8 +119,13 @@ struct LoginComponent {
 
         // 保存网络配置
         this.saveNetConfig()
+        // 初始化TCP网络配置
+        this.initTcpConfig()
 
-        this.initNetConfig()
+        // 初始化视频网络配置
+        VideoComponents.ip = this.ip;
+        VideoComponents.port = Number.parseInt(this.videoPort)
+
       })
         .width('200vp')
     }
@@ -127,14 +134,14 @@ struct LoginComponent {
   /**
    * 连接网络
    */
-  private async initNetConfig() {
+  private async initTcpConfig() {
 
     //
     let address = this.ip;
     // TCP IP、端口定义
     TCPClientManager.getInstance().initNetAddress({
       address: address,
-      port: Number.parseInt(this.port)
+      port: Number.parseInt(this.tcpPort)
     });
     // 创建TCP连接
     let isConnect = await TCPClientManager.getInstance().connect();
@@ -158,8 +165,8 @@ struct LoginComponent {
    */
   private readNetConfig() {
     PreferencesUtils.getInstance().netUtils.getIP().then((v: string) => this.ip = v)
-    PreferencesUtils.getInstance().netUtils.getTcpPort().then((v: string) => this.port = v)
-    PreferencesUtils.getInstance().netUtils.getVideoPort().then((v: string) => this.video = v)
+    PreferencesUtils.getInstance().netUtils.getTcpPort().then((v: string) => this.tcpPort = v)
+    PreferencesUtils.getInstance().netUtils.getVideoPort().then((v: string) => this.videoPort = v)
   }
 
   /**
@@ -167,8 +174,8 @@ struct LoginComponent {
    */
   private async saveNetConfig() {
     PreferencesUtils.getInstance().netUtils.setIp(this.ip)
-    PreferencesUtils.getInstance().netUtils.setTcpPort(this.port)
-    PreferencesUtils.getInstance().netUtils.setVideoPort(this.video)
+    PreferencesUtils.getInstance().netUtils.setTcpPort(this.tcpPort)
+    PreferencesUtils.getInstance().netUtils.setVideoPort(this.videoPort)
   }
 }
 
