@@ -9,6 +9,31 @@ export namespace CarEncode {
 
 
   /**
+   * 拍摄图片
+   * @returns
+   */
+  export function TakePhotosEncode(): string {
+    return BaseEncode('60');
+  }
+
+
+  /**
+   * 开始录像
+   * @returns
+   */
+  export function StartRecordingEncode(): string {
+    return BaseEncode('61');
+  }
+
+  /**
+   * 结束录像
+   * @returns
+   */
+  export function CloselRecordingEncode(): string {
+    return BaseEncode('62');
+  }
+
+  /**
    * 车辆控制编码
    * @param speed_x -100 ~ 100
    * @param speed_y -100 ~ 100
