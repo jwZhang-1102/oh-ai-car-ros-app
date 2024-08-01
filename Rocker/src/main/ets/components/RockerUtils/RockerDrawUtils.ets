@@ -1,6 +1,5 @@
 import { MathUtils } from '../utils/MathUtils';
 import { RockerOptions } from './RockerOptions';
-import { JSON } from '@kit.ArkTS';
 
 const TAG = 'CarRockerDrawUtils';
 const isDebug = false;
@@ -57,14 +56,9 @@ class RockerDrawUtils {
    * @param h
    */
   private clearCanvas() {
-    try {
-      // API9版本可能导致reset不可用
-      this.ctx.reset();
-    } catch (e) {
-      // 如果reset 不可用,那么使用clearRect清除画布
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      console.error(TAG, JSON.stringify(e));
-    }
+
+    // 如果reset 不可用,那么使用clearRect清除画布
+    this.ctx.clearRect(0, 0, this.width, this.height);
   }
 
   /**

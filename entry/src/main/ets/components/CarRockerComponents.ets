@@ -4,6 +4,8 @@ import promptAction from '@ohos.promptAction'
 import { CarRockerDrawUtils } from './CarRocker/CarRockerDrawUtils';
 import { CarEncode } from '../CarUtill/CarEncode';
 
+import { RockerComponent } from "rocker"
+
 let TAG = 'anran0';
 
 
@@ -22,13 +24,22 @@ struct CarRockerComponents {
    * 所需绘制的组件大小
    */
   private AreaValue?: Area
+  tiltStyle = new ImageBitmap("img/remote.svg");
+  backgroundStyle = new ImageBitmap("img/remote_background.svg");
 
   build() {
-    Canvas(this.ctx)
-      .onReady(() => {
-        //可以在这里绘制内容。
-        this.drawUtils.myOnReadyEvent()
-      })
+    // Canvas(this.ctx)
+    //   .onReady(() => {
+    //     //可以在这里绘制内容。
+    //     this.drawUtils.myOnReadyEvent()
+    //   })
+    RockerComponent({
+      rockerOptions: {
+        tiltWidth: 60,
+        getTiltStyle: () => this.tiltStyle,
+        getBackgroundStyle: () => this.backgroundStyle
+      }
+    })
       .onTouch((event) => {
         //在这里触发手指移动响应
         this.myOnTouchEvent(event)
