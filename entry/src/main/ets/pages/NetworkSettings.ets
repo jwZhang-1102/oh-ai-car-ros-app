@@ -7,6 +7,7 @@ import promptAction from '@ohos.promptAction'
 import router from '@ohos.router'
 import { PreferencesUtils } from '../utils/PreferencesUtils'
 import { VideoComponents } from '../components/VideoComponents'
+import { ButtonShadow } from '../styles/styles'
 
 
 @Entry
@@ -39,13 +40,10 @@ struct NetworkSettings {
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
 
-        Blank()
-          .width(0)
-          .layoutWeight(1)
-
       }
       .height('100%')
     }
+    .backgroundColor($r('app.color.window_background'))
   }
 }
 
@@ -54,6 +52,7 @@ struct LoginComponent {
   // 控件大小
   TextWidth: Length = '80vp';
   FontSize: Length = '20fp'
+  BlankWidth: Length = '10vp'
   //
   @State ip: string = "192.168.1.11"
   @State tcpPort: string = "6000"
@@ -84,9 +83,14 @@ struct LoginComponent {
           .width(this.TextWidth)
           .textAlign(TextAlign.End)
           .fontSize(this.FontSize)
+          .fontColor($r('app.color.button_text'))
+
+        Blank().width(this.BlankWidth)
+
         TextInput({ text: this.ip })
           .onChange((v) => this.ip = v)
           .layoutWeight(1)
+          .backgroundColor($r('app.color.edit_text_background'))
       }.width('100%')
       .LoginComponentLineStyle()
 
@@ -96,9 +100,14 @@ struct LoginComponent {
           .width(this.TextWidth)
           .textAlign(TextAlign.End)
           .fontSize(this.FontSize)
+          .fontColor($r('app.color.button_text'))
+
+        Blank().width(this.BlankWidth)
+
         TextInput({ text: this.tcpPort })
           .onChange((v) => this.tcpPort = v)
           .layoutWeight(1)
+          .backgroundColor($r('app.color.edit_text_background'))
       }
       .width('100%')
       .LoginComponentLineStyle()
@@ -109,9 +118,14 @@ struct LoginComponent {
           .width(this.TextWidth)
           .textAlign(TextAlign.End)
           .fontSize(this.FontSize)
+          .fontColor($r('app.color.button_text'))
+
+        Blank().width(this.BlankWidth)
+
         TextInput({ text: this.videoPort })
           .onChange((v) => this.videoPort = v)
           .layoutWeight(1)
+          .backgroundColor($r('app.color.edit_text_background'))
       }.width('100%')
       .LoginComponentLineStyle()
 
@@ -128,6 +142,8 @@ struct LoginComponent {
 
       })
         .width('200vp')
+        .backgroundColor($r('app.color.button_background'))
+        .shadow(ButtonShadow)
     }
   }
 
