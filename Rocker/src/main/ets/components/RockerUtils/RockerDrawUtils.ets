@@ -84,26 +84,30 @@ class RockerDrawUtils {
    * 绘制手指
    */
   private drawRule() {
+    // 手指半径
+    let tiltR: number = this.FingerRadius;
+    tiltR = this.FingerRadius < 1 ? this.width / 2 * tiltR : tiltR;
+
     // 手指绘制映射,避免手指绘制不完全
     let x = MathUtils.mapValue(this.tiltX,
       0, this.width,
-      0 + this.FingerRadius, this.width - this.FingerRadius)
+      0 + tiltR, this.width - tiltR)
     let y = MathUtils.mapValue(this.tiltY,
       0, this.height,
-      0 + this.FingerRadius, this.width - this.FingerRadius)
+      0 + tiltR, this.width - tiltR)
 
     if (!this.rockerOptions.getTiltStyle) {
       // 如果没有自定义图形那么进行绘制
       this.ctx.fillStyle = '#999';
       let rule2D: Path2D = new Path2D();
-      rule2D.arc(x, y, this.FingerRadius, 0, 360);
+      rule2D.arc(x, y, tiltR, 0, 360);
       this.ctx.fill(rule2D);
       return;
     }
 
     this.ctx.drawImage(this.rockerOptions.getTiltStyle(),
-      x - this.FingerRadius, y - this.FingerRadius,
-      this.FingerRadius * 2, this.FingerRadius * 2,
+      x - tiltR, y - tiltR,
+      tiltR * 2, tiltR * 2,
     )
 
   }

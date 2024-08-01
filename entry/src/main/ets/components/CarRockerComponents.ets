@@ -35,7 +35,7 @@ struct CarRockerComponents {
     //   })
     RockerComponent({
       rockerOptions: {
-        tiltWidth: 60,
+        tiltWidth: 0.6,
         getTiltStyle: () => this.tiltStyle,
         getBackgroundStyle: () => this.backgroundStyle
       }
