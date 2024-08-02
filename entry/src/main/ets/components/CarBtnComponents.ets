@@ -1,5 +1,6 @@
 import { carApi } from '../CarUtill/CarApi'
 import { CarDirection } from '../CarUtill/CarEnum'
+import { ButtonShadow } from '../styles/styles'
 
 /**
  * 按键控制UI组件
@@ -10,21 +11,27 @@ struct CarBtnComponents {
     Grid() {
       // 第一行
       GridItem() {
-        Button("左转")// .backgroundColor(0xF9CF93)
+        Button("左转")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.LeftRotate)))
       }
 
       GridItem() {
-        Button("前")// .backgroundColor(0xF9CF93)
+        Button("前")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Front)))
       }
 
       GridItem() {
-        Button("左转")// .backgroundColor(0xF9CF93)
+        Button("左转")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.RightRotate)))
@@ -33,6 +40,8 @@ struct CarBtnComponents {
       // 第二行
       GridItem() {
         Button("左")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Left)))
@@ -40,6 +49,8 @@ struct CarBtnComponents {
 
       GridItem() {
         Button("停")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Brake)))
@@ -48,6 +59,8 @@ struct CarBtnComponents {
 
       GridItem() {
         Button("右")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Right)))
@@ -59,6 +72,8 @@ struct CarBtnComponents {
 
       GridItem() {
         Button("后")
+          .backgroundColor($r('app.color.button_background'))
+          .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
           .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.After)))
