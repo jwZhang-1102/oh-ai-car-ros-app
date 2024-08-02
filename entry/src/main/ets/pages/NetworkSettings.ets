@@ -8,6 +8,7 @@ import router from '@ohos.router'
 import { PreferencesUtils } from '../utils/PreferencesUtils'
 import { VideoComponents } from '../components/VideoComponents'
 import { ButtonShadow } from '../styles/styles'
+import { MyUtils } from '../utils/MyUtils'
 
 
 @Entry
@@ -30,6 +31,11 @@ struct NetworkSettings {
             connectSuccessRun: () => {
               // 如果连接成功 打开主页
               router.pushUrl({ url: "pages/Index" })
+            },
+            connectfailRun: () => {
+              // 如果在调试状态，连接失败也打开主页
+              if (MyUtils.isDebug)
+                router.pushUrl({ url: "pages/Index" })
             }
           })
             .width('300vp')
