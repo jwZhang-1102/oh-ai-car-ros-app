@@ -94,8 +94,8 @@ struct RemoteControl {
       .layoutWeight(1)
       .justifyContent(FlexAlign.Center)
     }
-
     .height('100%')
+    .backgroundColor($r('app.color.window_background'))
   }
 }
 
@@ -110,9 +110,9 @@ struct MyTab {
   @Prop state: boolean = false;
   @Prop text: string = "hello";
   /**选中颜色*/
-  trueColor: string = '#add'
+  trueColor: string|Resource = $r('app.color.button_select_background')
   /**未被选中颜色*/
-  falseColor: string = '#cff'
+  falseColor: string|Resource = $r('app.color.button_background')
 
   build() {
     Stack() {
