@@ -68,9 +68,7 @@ SmartCar
 │  │  │  │  │  ├─ 📄CarApi.ets              # 小车通信API 
 │  │  │  │  │  ├─ 📄CarEncode.ets           # 小车通信编码工具  
 │  │  │  │  │  └─ 📄CarEnum.ets             # 小车通信状态枚举
-│  │  │  │  ├─ 📁components                 # 组件包        
-│  │  │  │  │  ├─ 📁CarRocker               # 摇杆工具
-│  │  │  │  │  │  └─ 📄CarRockerDrawUtils.ets 
+│  │  │  │  ├─ 📁components                 # 组件包
 │  │  │  │  │  ├─ 📄CarBtnComponents.ets    # 小车按钮组件
 │  │  │  │  │  ├─ 📄CarRockerComponents.ets # 小车摇杆组件
 │  │  │  │  │  └─ 📄VideoComponents.ets     # 视频组件
