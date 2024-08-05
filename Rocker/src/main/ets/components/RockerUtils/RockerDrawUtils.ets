@@ -182,7 +182,7 @@ class RockerDrawUtils {
    */
   public setSize(width: number, height: number) {
     this._height = height;
-    this._width = height;
+    this._width = width;
   }
 }
 
