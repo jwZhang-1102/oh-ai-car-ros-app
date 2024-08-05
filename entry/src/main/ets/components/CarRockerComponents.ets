@@ -1,10 +1,7 @@
 import { carApi } from '../CarUtill/CarApi'
-import { CarDirection } from '../CarUtill/CarEnum'
-import promptAction from '@ohos.promptAction'
-import { CarRockerDrawUtils } from './CarRocker/CarRockerDrawUtils';
 import { CarEncode } from '../CarUtill/CarEncode';
 
-import { RockerComponent } from "rocker"
+import { RockerComponent, RockerOptions } from "rocker"
 
 let TAG = 'anran0';
 
@@ -14,113 +11,35 @@ let TAG = 'anran0';
  */
 @Component
 struct CarRockerComponents {
-  // 用来配置CanvasRenderingContext2D对象的参数，包括是否开启抗锯齿，true表明开启抗锯齿。
-  private settings: RenderingContextSettings = new RenderingContextSettings(true)
-  // 用来创建CanvasRenderingContext2D对象，通过在canvas中调用CanvasRenderingContext2D对象来绘制。
-  private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
-  // 屏幕绘制工具
-  private drawUtils: CarRockerDrawUtils = new CarRockerDrawUtils(this.ctx)
-  /**
-   * 所需绘制的组件大小
-   */
-  private AreaValue?: Area
+  // 摇杆的手指的样式
   tiltStyle = new ImageBitmap("img/remote.svg");
+  // 摇杆的背景样式
   backgroundStyle = new ImageBitmap("img/remote_background.svg");
 
+  /**
+   * 构建并渲染摇杆控制组件
+   * 此方法定义了摇杆组件的外观和行为。
+   * 它通过配置RockerComponent的参数来设置摇杆的宽度、样式、背景以及倾斜事件的处理。
+   */
   build() {
-    // Canvas(this.ctx)
-    //   .onReady(() => {
-    //     //可以在这里绘制内容。
-    //     this.drawUtils.myOnReadyEvent()
-    //   })
     RockerComponent({
+      // 摇杆的选项配置
       rockerOptions: {
+        // 摇杆的宽度，这里以屏幕宽度的百分比表示
         tiltWidth: 0.6,
+        // 获取摇杆倾斜时的样式
         getTiltStyle: () => this.tiltStyle,
-        getBackgroundStyle: () => this.backgroundStyle
+        // 获取摇杆的背景样式
+        getBackgroundStyle: () => this.backgroundStyle,
+        // 摇杆倾斜事件处理函数
+        // 当摇杆倾斜时，此函数被调用，并接收倾斜的X和Y方向值，以及可能的TouchEvent对象
+        tiltEvent: (tiltX: number, tiltY: number, event?: TouchEvent) => {
+          // 使用小车API发送控制指令
+          // CarEncode.CtrlCarEncode是一个函数，用于将倾斜的X和Y值编码为小车可识别的控制指令
+          carApi.send(CarEncode.CtrlCarEncode(tiltX, tiltY));
+        }
       }
     })
-      .onTouch((event) => {
-        //在这里触发手指移动响应
-        this.myOnTouchEvent(event)
-      })
-      .onAreaChange((oldValue: Area, newValue: Area) => {
-
-        // 显示区域变化监听
-
-        console.info(TAG, `oldValue is ${JSON.stringify(oldValue)} ` +
-          `value is ${JSON.stringify(newValue)}`)
-        // 组件位置共享
-        this.AreaValue = newValue;
-
-        if (this.AreaValue) { // 防御性编程
-          let w = (this.AreaValue.width as number)
-          let h = (this.AreaValue.height as number)
-          //重置手指的位置,在屏幕中央
-          this.drawUtils.setTiltXY(w / 2, h / 2)
-          // 重置绘制大小
-          this.drawUtils.setSize(w, h)
-        }
-
-        // 重绘组件
-        this.drawUtils.myOnReadyEvent()
-      })
-      .onClick(() => {
-        this.drawUtils.myOnReadyEvent();
-      })
-  }
-
-  /** 触摸事件*/
-  private myOnTouchEvent(event?: TouchEvent) {
-
-    if (!event) return; // 防御性编程
-
-
-    if (event.type === TouchType.Up) {
-      // - 如果抬起触摸事件时
-
-      //重置手指的位置,在屏幕中央
-      if (this.AreaValue) { // 防御性编程
-        let tiltX = (this.AreaValue.width as number) / 2
-        let tiltY = (this.AreaValue.height as number) / 2
-        this.drawUtils.setTiltXY(tiltX, tiltY);
-      }
-      // 重绘界面
-      this.drawUtils.myOnReadyEvent();
-    } else if (event.type === TouchType.Move) {
-      // - 手指触摸途中
-      // 更新手指位置
-      let tiltX = event.touches[0].x
-      let tiltY = event.touches[0].y
-      this.drawUtils.setTiltXY(tiltX, tiltY);
-      //重绘触控UI
-      this.drawUtils.myOnReadyEvent()
-
-    } else if (event.type === TouchType.Down) {
-      // - 如果出发触摸事件时响应相应的点击事件
-    }
-
-
-    // 发送编码字符
-    this.sendEncode();
-
-  }
-
-  private sendEncode() {
-
-    let w = this.drawUtils.width;
-
-
-    // x [0,w]->[-100,100]
-    // 将 [0,w] 的 x 映射到 [-100,100]
-    let xmap = (x: number, w: number, l: number, r: number) => {
-      return x / (w - 0) * (r - l) + l
-    }
-
-    let sendx = xmap(this.drawUtils.tiltX, this.drawUtils.width, -100, 100);
-    let sendy = xmap(this.drawUtils.tiltY, this.drawUtils.height, -100, 100);
-    sendy *= -1;
-    carApi.send(CarEncode.CtrlCarEncode(sendx, sendy));
   }
 }
 

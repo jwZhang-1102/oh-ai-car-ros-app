@@ -6,7 +6,7 @@ const isDebug = false;
 
 class RockerDrawUtils {
   /**摇杆绘制选项*/
-  rockerOptions: RockerOptions = {}
+  rockerOptions: RockerOptions = new RockerOptions() ;
 
   //构造函数
   constructor(ctx: CanvasRenderingContext2D, rockerOptions?: RockerOptions) {
@@ -15,6 +15,16 @@ class RockerDrawUtils {
       this.rockerOptions = rockerOptions;
     }
 
+  }
+
+  /**
+   * 初始化
+   * @param rockerOptions
+   */
+  public init(rockerOptions?: RockerOptions) {
+    if (rockerOptions) {
+      this.rockerOptions = rockerOptions;
+    }
   }
 
   // ---------------常量------------------------------

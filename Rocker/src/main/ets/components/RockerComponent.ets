@@ -1,5 +1,5 @@
 import { RockerDrawUtils } from './RockerUtils/RockerDrawUtils';
-import { GetImageBitmap, RockerOptions } from './RockerUtils/RockerOptions';
+import { GetImageBitmap, iRockerOptions, RockerOptions } from './RockerUtils/RockerOptions';
 
 let TAG = 'anran0';
 
@@ -14,15 +14,7 @@ struct RockerComponent {
 
   // @Prop public getBackgroundStyle?: GetImageBitmap
   /**摇杆绘制选项*/
-  @Prop public rockerOptions?: RockerOptions | undefined
-  /**
-   *手指调用回调
-   * @param tiltX -100~100 手指触摸X位置
-   * @param tiltY -100~100 手指触Y位置
-   * @param event 手指触摸事件
-   */
-  public tiltEvent = (tiltX: number, tiltY: number, event?: TouchEvent) => {
-  }
+  @Prop rockerOptions: iRockerOptions
   // 内部接口
 
   // 用来配置CanvasRenderingContext2D对象的参数，包括是否开启抗锯齿，true表明开启抗锯齿。
@@ -30,11 +22,16 @@ struct RockerComponent {
   // 用来创建CanvasRenderingContext2D对象，通过在canvas中调用CanvasRenderingContext2D对象来绘制。
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   // 屏幕绘制工具
-  private drawUtils: RockerDrawUtils = new RockerDrawUtils(this.ctx, this.rockerOptions)
+  private drawUtils: RockerDrawUtils = new RockerDrawUtils(this.ctx)
   /**
    * 所需绘制的组件大小
    */
   private AreaValue?: Area
+
+  aboutToAppear(): void {
+
+    this.drawUtils.init(this.rockerOptions)
+  }
 
   build() {
     Canvas(this.ctx)
@@ -113,7 +110,10 @@ struct RockerComponent {
     let tiltY = xmap(this.drawUtils.tiltY, this.drawUtils.height, -100, 100);
     tiltY *= -1;
 
-    this.tiltEvent(tiltX, tiltY, event)
+    // 如果配置了手指触摸代码，那么进行触摸事件@
+    if (this.rockerOptions.tiltEvent) {
+      this.rockerOptions.tiltEvent(tiltX, tiltY, event)
+    }
   }
 }
 
