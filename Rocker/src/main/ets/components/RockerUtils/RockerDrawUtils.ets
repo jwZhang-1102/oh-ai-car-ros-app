@@ -76,7 +76,7 @@ class RockerDrawUtils {
    */
   private drawBackground() {
 
-    // @todo 这段代码在api9 HarmonyOS4.0下验证失败
+    // @todo 这段代码在api9 HarmonyOS4.0 （Mate50）下验证失败
     if (this.rockerOptions.getBackgroundStyle) {
       //  如果自定义图形,那么使用自定义图形进行绘制
       let img = this.rockerOptions.getBackgroundStyle();
@@ -108,7 +108,7 @@ class RockerDrawUtils {
       0, this.height,
       0 + tiltR, this.width - tiltR)
 
-    // @todo 这段代码在api9 HarmonyOS4.0下验证失败
+    // @todo 这段代码在api9 HarmonyOS4.0（Mate50）下验证失败
     if (this.rockerOptions.getTiltStyle) {
       // 如果提供了绘制图案，那么绘制
       this.ctx.drawImage(this.rockerOptions.getTiltStyle(),
