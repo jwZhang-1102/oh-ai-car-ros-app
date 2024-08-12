@@ -3,15 +3,14 @@
     "signingConfigs": [
       {
         "name": "default",
-        "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\17151\\.ohos\\config\\auto_debug_api9hello_com.hoperun.cmartcar_2850086000362081690.cer",
-          "storePassword": "0000001B058DD9E6CDB66BF2D54D7D3E66EB65340610D46E2CE01BFB194F4C63919FDD16069822A7DB9961",
+          "certpath": "C:\\Users\\17151\\.ohos\\config\\openharmony\\auto_ohos_default_api9hello_com.hoperun.cmartcar.cer",
+          "storePassword": "0000001B1B2B6AC1B97066FF94989F72B4651C4A17EA55C57A0CFF9BEE4712638CB4DA6BD5E1944125F7EA",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BB002083B87F89D3BB88C2EECB57126B167FEB1D7B8A5A252531004342033310D700C2ACF27EC21",
-          "profile": "C:\\Users\\17151\\.ohos\\config\\auto_debug_api9hello_com.hoperun.cmartcar_2850086000362081690.p7b",
+          "keyPassword": "0000001B15B72082CDB9A26E208011B2A4BF7373B8B98ACFFAE1A741DC4196B2A2B2023823DB6CD391D021",
+          "profile": "C:\\Users\\17151\\.ohos\\config\\openharmony\\auto_ohos_default_api9hello_com.hoperun.cmartcar.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\17151\\.ohos\\config\\auto_debug_api9hello_com.hoperun.cmartcar_2850086000362081690.p12"
+          "storeFile": "C:\\Users\\17151\\.ohos\\config\\openharmony\\auto_ohos_default_api9hello_com.hoperun.cmartcar.p12"
         }
       }
     ],
