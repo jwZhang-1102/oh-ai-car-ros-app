@@ -14,7 +14,7 @@ struct RockerComponent {
 
   // @Prop public getBackgroundStyle?: GetImageBitmap
   /**摇杆绘制选项*/
-  @Prop rockerOptions: iRockerOptions
+  rockerOptions: iRockerOptions
   // 内部接口
 
   // 用来配置CanvasRenderingContext2D对象的参数，包括是否开启抗锯齿，true表明开启抗锯齿。
@@ -48,7 +48,7 @@ struct RockerComponent {
         // 显示区域变化监听
 
         console.info(TAG, `oldValue is ${JSON.stringify(oldValue)} ` +
-          `value is ${JSON.stringify(newValue)}`)
+        `value is ${JSON.stringify(newValue)}`)
         // 组件位置共享
         this.AreaValue = newValue;
 

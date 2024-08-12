@@ -6,7 +6,7 @@ const isDebug = false;
 
 class RockerDrawUtils {
   /**摇杆绘制选项*/
-  rockerOptions: RockerOptions = new RockerOptions() ;
+  rockerOptions: RockerOptions = new RockerOptions();
 
   //构造函数
   constructor(ctx: CanvasRenderingContext2D, rockerOptions?: RockerOptions) {
@@ -75,19 +75,21 @@ class RockerDrawUtils {
    * 绘制背景
    */
   private drawBackground() {
-    if (!this.rockerOptions.getBackgroundStyle) {
-      // 如果没有自定义图形,那么用默认圆圈填充
-      this.ctx.strokeStyle = '#000';
-      let rule2D: Path2D = new Path2D();
-      let w = this.width, h = this.height; //组件宽高
-      rule2D.arc(w / 2, h / 2, w / 2, 0, 360);
-      this.ctx.stroke(rule2D);
+
+    // @todo 这段代码在api9 HarmonyOS4.0下验证失败
+    if (this.rockerOptions.getBackgroundStyle) {
+      //  如果自定义图形,那么使用自定义图形进行绘制
+      let img = this.rockerOptions.getBackgroundStyle();
+      this.ctx.drawImage(img, 0, 0, this.width, this.height);
       return;
     }
 
-    // 使用自定义图形进行绘制
-    let img = this.rockerOptions.getBackgroundStyle();
-    this.ctx.drawImage(img, 0, 0, this.width, this.height);
+    // 如果没有自定义图形,那么用默认圆圈填充
+    this.ctx.strokeStyle = '#000';
+    let rule2D: Path2D = new Path2D();
+    let w = this.width, h = this.height; //组件宽高
+    rule2D.arc(w / 2, h / 2, w / 2, 0, 360);
+    this.ctx.stroke(rule2D);
   }
 
   /**
@@ -106,19 +108,21 @@ class RockerDrawUtils {
       0, this.height,
       0 + tiltR, this.width - tiltR)
 
-    if (!this.rockerOptions.getTiltStyle) {
-      // 如果没有自定义图形那么进行绘制
-      this.ctx.fillStyle = '#999';
-      let rule2D: Path2D = new Path2D();
-      rule2D.arc(x, y, tiltR, 0, 360);
-      this.ctx.fill(rule2D);
+    // @todo 这段代码在api9 HarmonyOS4.0下验证失败
+    if (this.rockerOptions.getTiltStyle) {
+      // 如果提供了绘制图案，那么绘制
+      this.ctx.drawImage(this.rockerOptions.getTiltStyle(),
+        x - tiltR, y - tiltR,
+        tiltR * 2, tiltR * 2,
+      )
       return;
     }
 
-    this.ctx.drawImage(this.rockerOptions.getTiltStyle(),
-      x - tiltR, y - tiltR,
-      tiltR * 2, tiltR * 2,
-    )
+    // 如果没有自定义图形那么进行绘制
+    this.ctx.fillStyle = '#999';
+    let rule2D: Path2D = new Path2D();
+    rule2D.arc(x, y, tiltR, 0, 360);
+    this.ctx.fill(rule2D);
 
   }
 
