@@ -1,15 +1,12 @@
 {
-  "name": "smartcar",
-  "version": "1.0.0",
+  "license": "",
+  "devDependencies": {
+    "@ohos/hypium": "1.0.6"
+  },
+  "author": "",
+  "name": "api9hello",
   "description": "Please describe the basic information.",
   "main": "",
-  "author": "",
-  "license": "",
-  "dependencies": {
-    "rocker": "file:Rocker"
-  },
-  "devDependencies": {
-    "@ohos/hypium": "1.0.13"
-  },
-  "dynamicDependencies": {}
+  "version": "1.0.0",
+  "dependencies": {}
 }

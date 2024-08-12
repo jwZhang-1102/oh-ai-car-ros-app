@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.cer",
-          "storePassword": "0000001BA60D556C70EC76ADE9263B8F0F006DD0D924A3FFB7F76B3BA872E03610CC4D92E8FEDB5102FE1B",
+          "certpath": "C:\\Users\\17151\\.ohos\\config\\auto_debug_api9hello_com.hoperun.cmartcar_2850086000362081690.cer",
+          "storePassword": "0000001B058DD9E6CDB66BF2D54D7D3E66EB65340610D46E2CE01BFB194F4C63919FDD16069822A7DB9961",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B7DB2C959C2CE438054BD87C86E44D16A7E7B0344F3CA8D04E250BAAE46FACDF75F90480201E326",
-          "profile": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p7b",
+          "keyPassword": "0000001BB002083B87F89D3BB88C2EECB57126B167FEB1D7B8A5A252531004342033310D700C2ACF27EC21",
+          "profile": "C:\\Users\\17151\\.ohos\\config\\auto_debug_api9hello_com.hoperun.cmartcar_2850086000362081690.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\17151\\.ohos\\config\\default_SmartCar_X2HtelDGXZoYqPdVN-BUEGLJpC2N9PeMynVy3Q4FrrA=.p12"
+          "storeFile": "C:\\Users\\17151\\.ohos\\config\\auto_debug_api9hello_com.hoperun.cmartcar_2850086000362081690.p12"
         }
       }
     ],
@@ -21,14 +21,6 @@
       {
         "name": "default",
         "signingConfig": "default",
-      }
-    ],
-    "buildModeSet": [
-      {
-        "name": "debug",
-      },
-      {
-        "name": "release"
       }
     ]
   },
