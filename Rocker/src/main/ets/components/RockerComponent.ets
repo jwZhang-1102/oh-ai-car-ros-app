@@ -1,5 +1,5 @@
 import { RockerDrawUtils } from './RockerUtils/RockerDrawUtils';
-import { GetImageBitmap, iRockerOptions, RockerOptions } from './RockerUtils/RockerOptions';
+import { RockerOptions } from './RockerUtils/RockerOptions';
 
 let TAG = 'anran0';
 
@@ -14,7 +14,7 @@ struct RockerComponent {
 
   // @Prop public getBackgroundStyle?: GetImageBitmap
   /**摇杆绘制选项*/
-  rockerOptions: iRockerOptions
+  @Prop rockerOptions: RockerOptions = new RockerOptions()
   // 内部接口
 
   // 用来配置CanvasRenderingContext2D对象的参数，包括是否开启抗锯齿，true表明开启抗锯齿。
@@ -35,6 +35,8 @@ struct RockerComponent {
 
   build() {
     Canvas(this.ctx)
+      .width('100%')
+      .height('100%')
       .onReady(() => {
         //可以在这里绘制内容。
         this.drawUtils.myOnReadyEvent()

@@ -84,11 +84,15 @@ class RockerDrawUtils {
       return;
     }
 
-    // 如果没有自定义图形,那么用默认圆圈填充
-    this.ctx.strokeStyle = '#000';
+    // 默认样式：外圈底盘
+    let w = this.width, h = this.height;
+    let cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 2;
     let rule2D: Path2D = new Path2D();
-    let w = this.width, h = this.height; //组件宽高
-    rule2D.arc(w / 2, h / 2, w / 2, 0, 360);
+    rule2D.arc(cx, cy, r, 0, Math.PI * 2);
+    this.ctx.fillStyle = '#E8E8E8';
+    this.ctx.fill(rule2D);
+    this.ctx.strokeStyle = '#333333';
+    this.ctx.lineWidth = 2;
     this.ctx.stroke(rule2D);
   }
 
@@ -106,7 +110,7 @@ class RockerDrawUtils {
       0 + tiltR, this.width - tiltR)
     let y = MathUtils.mapValue(this.tiltY,
       0, this.height,
-      0 + tiltR, this.width - tiltR)
+      0 + tiltR, this.height - tiltR)
 
     // @todo 这段代码在api9 HarmonyOS4.0（Mate50）下验证失败
     if (this.rockerOptions.getTiltStyle) {
@@ -118,11 +122,14 @@ class RockerDrawUtils {
       return;
     }
 
-    // 如果没有自定义图形那么进行绘制
-    this.ctx.fillStyle = '#999';
+    // 默认样式：摇杆旋钮
+    this.ctx.fillStyle = '#4A90D9';
+    this.ctx.strokeStyle = '#2C5F8A';
+    this.ctx.lineWidth = 2;
     let rule2D: Path2D = new Path2D();
-    rule2D.arc(x, y, tiltR, 0, 360);
+    rule2D.arc(x, y, tiltR, 0, Math.PI * 2);
     this.ctx.fill(rule2D);
+    this.ctx.stroke(rule2D);
 
   }
 

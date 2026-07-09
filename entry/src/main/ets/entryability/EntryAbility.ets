@@ -41,7 +41,7 @@ export default class EntryAbility extends UIAbility {
     ScreenUtils.keepScreenOn(this.context, true)
     // 设置标题栏不可见
     // ScreenUtils.setSystemBarEnable_api9(this.context)
-    // ScreenUtils.setSystemBarEnable_api10(windowStage)
+    ScreenUtils.setSystemBarEnable_api10(windowStage)
 
   }
 

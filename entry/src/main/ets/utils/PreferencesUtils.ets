@@ -3,7 +3,7 @@ import preferences from '@ohos.data.preferences';
 /**首选项对象*/
 export class PreferencesUtils {
   /**私有静态实例，懒汉式单例*/
-  private static instance: PreferencesUtils = undefined;
+  private static instance: PreferencesUtils | undefined = undefined;
 
   /**私有构造方法，防止外部直接实例化*/
   private constructor() {
@@ -18,7 +18,7 @@ export class PreferencesUtils {
   }
 
   /**网络工具对象*/
-  netUtils: NetInfoPreferencesUtils
+  netUtils: NetInfoPreferencesUtils | null = null
 
   /*
     * 初始化preferences实例
@@ -42,7 +42,7 @@ export class NetInfoPreferencesUtils {
   /**KEY IP*/
   public static readonly KEY_VIDEO_PORT = "KEY_TCP_VIDEO";
   /**首选项实例*/
-  private pref: preferences.Preferences
+  private pref: preferences.Preferences | null = null
 
   /**构造函数*/
   constructor(context: Context) {
@@ -64,30 +64,48 @@ export class NetInfoPreferencesUtils {
   // ------------------------------对外接口------------------------------
 
   getIP() {
-    return this.pref.get(NetInfoPreferencesUtils.KEY_IP, '192.168.1.11')
+    if (this.pref === null) {
+      return Promise.resolve('10.147.13.194')
+    }
+    return this.pref.get(NetInfoPreferencesUtils.KEY_IP, '10.147.13.194')
   }
 
   setIp(v: string) {
+    if (this.pref === null) {
+      return
+    }
     this.pref.put(NetInfoPreferencesUtils.KEY_IP, v);
     this.pref.flush()
   }
 
 
   getTcpPort() {
+    if (this.pref === null) {
+      return Promise.resolve('6000')
+    }
     return this.pref.get(NetInfoPreferencesUtils.KEY_TCP_PORT, '6000')
   }
 
   setTcpPort(v: string) {
+    if (this.pref === null) {
+      return
+    }
     this.pref.put(NetInfoPreferencesUtils.KEY_TCP_PORT, v);
     this.pref.flush()
   }
 
   setVideoPort(v: string) {
+    if (this.pref === null) {
+      return
+    }
     this.pref.put(NetInfoPreferencesUtils.KEY_VIDEO_PORT, v);
     this.pref.flush()
   }
 
   getVideoPort() {
+    if (this.pref === null) {
+      return Promise.resolve('6500')
+    }
     return this.pref.get(NetInfoPreferencesUtils.KEY_VIDEO_PORT, '6500')
   }
 }

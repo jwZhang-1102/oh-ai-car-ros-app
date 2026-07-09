@@ -1,5 +1,6 @@
 import window from '@ohos.window'
 import common from '@ohos.app.ability.common'
+import { BusinessError } from '@ohos.base'
 
 export namespace ScreenUtils {
 
@@ -21,7 +22,7 @@ export namespace ScreenUtils {
    * 设置导航栏，状态栏不可见，在api9以后不能使用
    */
   export async function setSystemBarEnable_api9(ctx: common.BaseContext) {
-    let windowClass = await window.getLastWindow(this.context)
+    let windowClass = await window.getLastWindow(ctx)
     await windowClass.setWindowSystemBarEnable([])
   }
 
@@ -37,7 +38,7 @@ export namespace ScreenUtils {
       .then(() => {
         console.info('Succeeded in setting the window layout to full-screen mode.');
       })// .catch((err: BusinessError) => {
-      .catch((err) => {
+      .catch((err: BusinessError) => {
         console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
       });
   }

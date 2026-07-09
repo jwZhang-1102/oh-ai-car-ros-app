@@ -9,7 +9,7 @@ let TAG = "VideoComponents"
 export struct VideoComponents {
   controller: web_webview.WebviewController = new web_webview.WebviewController()
   public static port: number = 6500;
-  public static ip: string = "192.168.1.11"
+  public static ip: string = "10.147.13.194"
   // 当前是否正在录制视频
   @State isRecording: boolean = false
 

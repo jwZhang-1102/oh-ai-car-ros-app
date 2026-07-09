@@ -30,7 +30,7 @@ export class TCPClientManager {
   }
 
   /** 服务器对象 */
-  private socket: socket.TCPSocket = null;
+  private socket: socket.TCPSocket  = socket.constructTCPSocketInstance();
   /**
    * 网络配置类
    */
@@ -67,10 +67,10 @@ export class TCPClientManager {
     // 如果当前是连接成功的，那么先断开连接
     if (isConnect == true) {
       this.socket.close();
-      this.socket = undefined;
+      // this.socket = undefined;
     }
 
-    this.socket = socket.constructTCPSocketInstance();
+    // this.socket = socket.constructTCPSocketInstance();
     try {
       // 绑定本机IP地址（在3.2R）
       await this.socket.bind({ address: '0.0.0.0', family: 1 })
@@ -106,7 +106,7 @@ export class TCPClientManager {
       // 如果连接失败需要断开连接
       // 在Mate50 HarmonyOS 4.2.0.130 API 9上连接失败 如果不断开导致下次无法正常连接
       this.socket.close();
-      this.socket = undefined;
+      // this.socket = undefined;
       return false;
     }
 
@@ -122,7 +122,7 @@ export class TCPClientManager {
     if (this.socket == null)
       return false;
 
-    let state: socket.SocketStateBase = undefined;
+    let state: socket.SocketStateBase | undefined = undefined;
 
     state = await this.socket.getState();
     console.log(TAG, `isConnect`,

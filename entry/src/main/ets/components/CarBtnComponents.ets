@@ -16,7 +16,7 @@ struct CarBtnComponents {
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.LeftRotate)))
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.LeftRotate) }))
       }
 
       GridItem() {
@@ -25,16 +25,16 @@ struct CarBtnComponents {
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Front)))
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Front) }))
       }
 
       GridItem() {
-        Button("左转")
+        Button("右转")
           .backgroundColor($r('app.color.button_background'))
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.RightRotate)))
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.RightRotate) }))
       }
 
       // 第二行
@@ -44,7 +44,7 @@ struct CarBtnComponents {
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Left)))
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Left) }))
       }
 
       GridItem() {
@@ -53,7 +53,7 @@ struct CarBtnComponents {
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Brake)))
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Brake) }))
 
       }
 
@@ -63,7 +63,7 @@ struct CarBtnComponents {
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.Right)))
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Right) }))
 
       }
 
@@ -76,8 +76,7 @@ struct CarBtnComponents {
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')
-          .onTouch(this.makeTouchEvent(() => carApi.carBtnCtrl(CarDirection.After)))
-
+          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.After) }))
       }
 
       GridItem()
@@ -90,9 +89,8 @@ struct CarBtnComponents {
    * 车辆拥有统一的触摸停止事件，所以通过本函数来构造响应函数
    * @param upEvent
    */
-  makeTouchEvent(upEvent: (event?: TouchEvent) => void) {
-
-    let fun = (event?: TouchEvent) => {
+  makeTouchEvent(upEvent: (event?: TouchEvent) => void): (event?: TouchEvent) => void {
+    let fun = (event?: TouchEvent): void => {
       // 防御性编程
       if (!event)
         return;

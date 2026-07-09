@@ -2,7 +2,7 @@
   "module": {
     "requestPermissions": [
       {
-        "name": "ohos.permission.INTERNET",
+        "name": "ohos.permission.INTERNET"
       }
     ],
     "name": "entry",
@@ -10,7 +10,7 @@
     "description": "$string:module_desc",
     "mainElement": "EntryAbility",
     "deviceTypes": [
-      "phone",
+      "default",
       "tablet"
     ],
     "deliveryWithInstall": true,
@@ -18,6 +18,7 @@
     "pages": "$profile:main_pages",
     "abilities": [
       {
+        "orientation": "landscape",
         "name": "EntryAbility",
         "srcEntry": "./ets/entryability/EntryAbility.ets",
         "description": "$string:EntryAbility_desc",

@@ -3,43 +3,26 @@ import { CarEncode } from '../CarUtill/CarEncode';
 
 import { RockerComponent, RockerOptions } from "rocker"
 
-let TAG = 'anran0';
-
-
 /**
- * 按键控制UI组件
+ * 摇杆控制 UI 组件
  */
 @Component
 struct CarRockerComponents {
-  // 摇杆的手指的样式
-  tiltStyle = new ImageBitmap("img/remote.svg");
-  // 摇杆的背景样式
-  backgroundStyle = new ImageBitmap("img/remote_background.svg");
-
   /**
-   * 构建并渲染摇杆控制组件
-   * 此方法定义了摇杆组件的外观和行为。
-   * 它通过配置RockerComponent的参数来设置摇杆的宽度、样式、背景以及倾斜事件的处理。
+   * 不使用 SVG ImageBitmap：OpenHarmony 上 Canvas.drawImage 对 SVG 支持不稳定，
+   * 会导致摇杆不可见但仍可触控。改用 RockerDrawUtils 默认圆形绘制。
    */
   build() {
     RockerComponent({
-      // 摇杆的选项配置
-      rockerOptions: {
-        // 摇杆的宽度，这里以屏幕宽度的百分比表示
-        tiltWidth: 0.6,
-        // 获取摇杆倾斜时的样式
-        getTiltStyle: () => this.tiltStyle,
-        // 获取摇杆的背景样式
-        getBackgroundStyle: () => this.backgroundStyle,
-        // 摇杆倾斜事件处理函数
-        // 当摇杆倾斜时，此函数被调用，并接收倾斜的X和Y方向值，以及可能的TouchEvent对象
+      rockerOptions: new RockerOptions({
+        tiltWidth: 0.35,
         tiltEvent: (tiltX: number, tiltY: number, event?: TouchEvent) => {
-          // 使用小车API发送控制指令
-          // CarEncode.CtrlCarEncode是一个函数，用于将倾斜的X和Y值编码为小车可识别的控制指令
           carApi.send(CarEncode.CtrlCarEncode(tiltX, tiltY));
         }
-      }
+      })
     })
+      .width('100%')
+      .height('100%')
   }
 }
 

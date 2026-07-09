@@ -53,8 +53,9 @@ struct RemoteControl {
 
 
           // 遥感控制
-          CarRockerComponents()// .width('210vp')
-            // .height('210vp')
+          CarRockerComponents()
+            .width('100%')
+            .height('100%')
             .border({ width: 1, color: Color.Black })
             .visibility(//如果选中控制模式为当前组件的控制模式，那么显示
               this.nowCtrlModel == CtrlModel.Rocker ?

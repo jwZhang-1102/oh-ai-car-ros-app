@@ -7,7 +7,7 @@ const TAG = "TCPClientPantUtils";
  */
 export class TCPClientSendUtils {
   /**私有静态实例，懒汉式单例*/
-  private static instance: TCPClientSendUtils = undefined;
+  private static instance: TCPClientSendUtils | undefined = undefined;
 
   /**私有构造方法，防止外部直接实例化*/
   private constructor() {

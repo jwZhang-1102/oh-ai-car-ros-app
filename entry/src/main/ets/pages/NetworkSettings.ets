@@ -60,7 +60,7 @@ struct LoginComponent {
   FontSize: Length = '20fp'
   BlankWidth: Length = '10vp'
   //
-  @State ip: string = "192.168.1.11"
+  @State ip: string = "10.147.13.194"
   @State tcpPort: string = "6000"
   @State videoPort: string = "6500"
   /**
@@ -186,18 +186,26 @@ struct LoginComponent {
    * 从本地首选项读取偏好设置
    */
   private readNetConfig() {
-    PreferencesUtils.getInstance().netUtils.getIP().then((v: string) => this.ip = v)
-    PreferencesUtils.getInstance().netUtils.getTcpPort().then((v: string) => this.tcpPort = v)
-    PreferencesUtils.getInstance().netUtils.getVideoPort().then((v: string) => this.videoPort = v)
+    const netUtils = PreferencesUtils.getInstance().netUtils
+    if (!netUtils) {
+      return
+    }
+    netUtils.getIP().then((v) => { this.ip = v as string })
+    netUtils.getTcpPort().then((v) => { this.tcpPort = v as string })
+    netUtils.getVideoPort().then((v) => { this.videoPort = v as string })
   }
 
   /**
    * 保存网络配置
    */
   private async saveNetConfig() {
-    PreferencesUtils.getInstance().netUtils.setIp(this.ip)
-    PreferencesUtils.getInstance().netUtils.setTcpPort(this.tcpPort)
-    PreferencesUtils.getInstance().netUtils.setVideoPort(this.videoPort)
+    const netUtils = PreferencesUtils.getInstance().netUtils
+    if (!netUtils) {
+      return
+    }
+    netUtils.setIp(this.ip)
+    netUtils.setTcpPort(this.tcpPort)
+    netUtils.setVideoPort(this.videoPort)
   }
 }
 
