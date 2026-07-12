@@ -1,159 +1,270 @@
-# 智慧小车遥控 App（OpenHarmony）
+# 智慧小车 App + 智检哨兵（OpenHarmony + Jetson）
 
-基于 OpenHarmony / ArkTS 开发的智慧小车遥控应用，通过 TCP 协议控制 Rosmaster 小车，并通过 HTTP 拉取车载摄像头画面。
+基于 OpenHarmony / ArkTS 的 Rosmaster 小车遥控应用，并扩展 **「智检哨兵」** 视觉巡检能力：YOLO 检测、事件留痕、App 拉取告警，可选 **地图危险区 + 蜂鸣器联动**。
 
 - **包名**：`com.hoperun.cmartcar`
 - **目标平台**：OpenHarmony API 12（`runtimeOS: "OpenHarmony"`）
-- **通信协议**：详见 [ros_api.md](./doc/ros_api.md)
+- **App 控车协议**：[doc/ros_api.md](./doc/ros_api.md)
+- **Jetson 巡检脚本**：[jetson/patrol/README.md](./jetson/patrol/README.md)
+- **导航 + 巡检联调**：[jetson/patrol/INTEGRATION.md](./jetson/patrol/INTEGRATION.md)
+
+---
 
 ## 功能概览
 
+### App 端
+
 | 功能 | 说明 |
 |------|------|
-| 网络配置 | 设置小车 IP、TCP 端口、视频端口，连接成功后进入主页 |
-| 遥控驾驶 | 摇杆 + 方向按钮控制小车前进/后退/平移/旋转 |
-| 麦克纳姆轮 | 四轮独立速度控制（cmd 20/21） |
-| 实时视频 | Web 组件加载 `http://{ip}:{port}/index2` 直播画面 |
-| 偏好存储 | IP 与端口通过 Preferences 持久化 |
+| 网络配置 | 小车 IP、TCP / 视频 / 巡检端口；支持「仅巡检」「仅遥控」等组合 |
+| 遥控驾驶 | 摇杆 + 方向按钮（cmd 10 / 15） |
+| 麦克纳姆轮 | 四轮独立速度（cmd 21） |
+| 实时视频 | HTTP MJPEG（6500），`MjpegFramePoller` 拉帧显示 |
+| **智能巡检** | HTTP 6700 拉事件列表、查看截图、自动刷新 |
+| 偏好存储 | IP 与各端口通过 Preferences 持久化 |
 
-当前版本为**单车连接**模式：`TCPClientManager` 单例维护一条 TCP 连接，所有控车指令经 `CarApi` 发送。
+当前为**单车连接**：`TCPClientManager` 单例维护一条 TCP 连接，控车指令经 `CarApi` 发送。
 
-## 网络与默认配置
+### Jetson 端（智检哨兵）
 
-| 项目 | 默认值 | 说明 |
-|------|--------|------|
-| 小车 IP | `10.147.13.194` | 可在网络配置页修改，并写入 Preferences |
-| TCP 端口 | `6000` | 控车指令，协议格式 `$...#` |
-| 视频端口 | `6500` | HTTP 直播，路径 `/index2` |
+| 功能 | 说明 |
+|------|------|
+| YOLO 检测 | `patrol_detector.py`：person / bottle 等，连续帧触发告警 |
+| 事件 HTTP | `patrol_server.py`：6700 提供 `/events`、`/snapshot`、`/health` |
+| 危险区联动 | `danger_zones.json` + map 位姿 + person → 蜂鸣（`[DANGER]`） |
+| 一键启停 | `start_patrol_host.sh` / `stop_patrol_host.sh` |
+| 自检 | `verify_danger_link.sh`：多边形、位姿、蜂鸣器 |
 
-**使用前请确保**：手机/平板与小车处于同一局域网，且 Jetson 上 TCP（6000）与视频（6500）服务已启动。
+---
+
+## 网络与端口
+
+| 项目 | 默认端口 | 说明 |
+|------|----------|------|
+| 小车 IP | `10.147.13.194` | 网络配置页可改 |
+| TCP 控车 | **6000** | `$...#` 帧，需 `ros/run` |
+| 视频直播 | **6500** | `/index2`、`/video_feed` |
+| **巡检 HTTP** | **6700** | `/events`、`/snapshot/<文件名>` |
+
+**重要**：6500 视频与 YOLO 巡检**共用 USB 摄像头**，同一时刻建议**只开一种**（App 网络页已提示）。
 
 ```bash
-# Jetson 上检查服务（示例）
-ss -tlnp | grep 6000
-ss -tlnp | grep 6500
-curl -I http://127.0.0.1:6500/index2   # 应返回 200
+# Jetson 检查端口
+ss -tlnp | grep -E '6000|6500|6700'
+curl -sf http://127.0.0.1:6700/health
+curl -sf http://127.0.0.1:6500/index2 -I
 ```
 
-## 架构说明
+---
+
+## 架构
 
 ```
-App（ArkTS）
-  └─ CarApi.send()
-       └─ TCPClientManager（单连接单例）→ TCP :6000
-            └─ Jetson Rosmaster 应用
-                 └─ 串口 → 底盘 MCU → 电机
+┌─────────────────────────────────────────────────────────────┐
+│  OpenHarmony App                                             │
+│  ├─ TCP :6000  → 遥控 / 麦轮（CarApi + CarEncode）            │
+│  ├─ HTTP :6500 → 视频（VideoComponents / MjpegFramePoller）  │
+│  └─ HTTP :6700 → 巡检（PatrolPage + PatrolApi）               │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ 局域网
+┌───────────────────────────▼─────────────────────────────────┐
+│  Jetson  ~/Rosmaster-App/rosmaster/                          │
+│  ├─ ros/run、camera_server     → 6000 / 6500（遥控模式）       │
+│  ├─ patrol_server + detector   → 6700 + YOLO（巡检模式）       │
+│  └─ Docker n1/n3（可选）       → /amcl_pose（危险区联动）      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-视频流不经过 TCP，由 `VideoComponents` 内 Web 组件直接访问 `http://{ip}:6500/index2`。
+---
 
-## 开发环境
+## 使用场景
 
-推荐使用 **DevEco Studio 6.1** 及 **OpenHarmony SDK API 12**。
+### 场景 A：App 遥控 + 看视频
 
+1. Jetson：`ros/run`（6000）+ 摄像头服务（6500）
+2. App：勾选 **TCP + 视频**，保存并进入
+3. 进入遥控 / 麦轮页
+
+### 场景 B：App 智能巡检（答辩常用）
+
+1. Jetson：
+
+   ```bash
+   cd ~/Rosmaster-App/rosmaster
+   bash start_patrol_host.sh          # 无窗口
+   bash start_patrol_host.sh --display # 接显示器时可看检测窗口
+   ```
+
+2. App：**保存并进入（巡检模式）** → **智能巡检** → 开启自动刷新
+3. 验证：`curl http://<小车IP>:6700/events`
+
+### 场景 C：自主导航 + 巡检 + 危险区
+
+1. Jetson 一键导航（开 3 个终端 n1/n2/n3）：
+
+   ```bash
+   cd ~/Rosmaster-App/rosmaster
+   bash start_nav_docker.sh
+   ```
+
+2. RViz：**2D Pose Estimate** → **2D Goal Pose**
+3. 宿主机：`bash start_patrol_host.sh --bg`
+4. 车进危险区 + 检出 person → `[DANGER]`
+
+详见 [jetson/patrol/INTEGRATION.md](./jetson/patrol/INTEGRATION.md)。
+
+### 场景 D：PC 罗技 G29 方向盘控车
+
+1. Jetson：`ros/run`（6000）
+2. Windows PC：G29 接 USB，`pip install pygame`
+3. 运行：[tools/logitech_g29_drive.py](./tools/logitech_g29_drive.py)（详见 [tools/README.md](./tools/README.md)）
+
+```cmd
+cd D:\oh-ai-car-ros-app\tools
+python logitech_g29_drive.py --ip 10.147.13.194 --max-speed 30
 ```
-DevEco Studio 6.1
-OpenHarmony SDK API 12
-Node.js（随 DevEco 自带或自行配置）
-```
+
+---
+
+## 开发环境（App）
+
+推荐 **DevEco Studio 6.1** + **OpenHarmony SDK API 12**。
 
 ### 本地配置
 
-1. **SDK 路径**：在项目根目录创建 `local.properties`（已加入 `.gitignore`），例如：
+1. 根目录 `local.properties`（已 gitignore）：
 
    ```properties
    sdk.dir=D:/OpenHarmonySDK
    nodejs.dir=C:/path/to/nodejs
    ```
 
-   若 DevEco 提示将 SDK 路径改为 `D:/OpenHarmonySDK`，请接受该建议。
+2. `build-profile.json5`：`compileSdkVersion` / `targetSdkVersion` = `12`，`runtimeOS: "OpenHarmony"`
+3. `hvigor/hvigor-config.json5`：`daemon: false`（避免 Windows 下 EPERM）
 
-2. **编译配置**：`build-profile.json5` 中 `compileSdkVersion` / `compatibleSdkVersion` / `targetSdkVersion` 须为整数 `12`，且 `runtimeOS` 为 `"OpenHarmony"`（不可使用 `"5.0.0(12)"` 这类字符串）。
+### 运行与调试
 
-3. **设备能力**：`entry/src/main/syscap.json` 已移除部分真机不支持的 SysCap，以提升在 OpenHarmony 设备上的兼容性。
+1. USB 连接 OpenHarmony 真机，Module 选 `entry`
+2. 网络配置页填写 IP，按需勾选 TCP / 视频 / 巡检
+3. 横屏运行（`module.json5` → `orientation: landscape`）
 
-4. **构建守护进程**：`hvigor/hvigor-config.json5` 中 `daemon: false`，避免多进程占用 `.hvigor` 导致 `EPERM` 构建失败。
+### App 常见问题
 
-### 签名
+| 现象 | 处理 |
+|------|------|
+| 视频黑屏 | 确认 6500 已启；与巡检不要同时占摄像头；查 IP/同网 |
+| 巡检无事件 | `curl .../6700/health`；Jetson 上 `bash start_patrol_host.sh` |
+| `EPERM` 构建失败 | 关多余 IDE 进程，删 `.hvigor` 重编 |
+| `00401008` | 运行配置 Module = `entry` |
 
-使用 DevEco 自动生成的 OpenHarmony 调试签名即可本地安装。签名材料路径配置在 `build-profile.json5` 的 `signingConfigs` 中。
+---
 
-## 运行与调试
+## Jetson 脚本部署
 
-1. 用 USB 连接 **OpenHarmony 真机**（推荐）；模拟器对 OpenHarmony 项目支持有限，可能出现 `devices is null` 或无法安装。
-2. 运行配置中 **Module** 选择 `entry`（勿留空，否则可能报 `00401008`）。
-3. 启动后进入网络配置页，填写小车 IP 并连接；连接成功跳转主页，再进入遥控或麦克纳姆轮页面。
-4. 应用横屏运行（`module.json5` 中 `orientation: landscape`）。
+从 Windows 上传到小车（**cmd 单行**）：
 
-### 常见问题
+```cmd
+cd /d D:\oh-ai-car-ros-app
+scp jetson/start_nav_docker.sh jetson/patrol/patrol_detector.py jetson/patrol/patrol_server.py jetson/patrol/start_patrol_host.sh jetson/patrol/stop_patrol_host.sh jetson/patrol/danger_zones.json jetson/patrol/danger_zone_utils.py jetson/patrol/pose_reader.py jetson/patrol/rosmaster_buzzer.py jetson/patrol/verify_danger_link.sh jetson@10.147.13.194:~/Rosmaster-App/rosmaster/
+```
 
-| 现象 | 处理建议 |
-|------|----------|
-| `EPERM` / `build.log` 被占用 | 关闭多余 DevEco/Cursor 窗口，结束 node 进程，删除 `.hvigor` 后重新构建 |
-| `00401008` 模块错误 | 运行配置 Module 设为 `entry` |
-| `devices is null` | 选择已就绪的真机，或等待设备连接 |
-| 摇杆区域空白但可触控 | 已改为默认圆形绘制（不依赖 SVG ImageBitmap），属预期表现 |
-| 视频黑屏 | 检查 6500 服务、IP/端口、手机与小车是否同网 |
-| Cursor 报 `hvigor-ohos-plugin` 找不到 | IDE 类型检查问题，DevEco 内构建通常仍可成功 |
+Jetson 工作目录：`~/Rosmaster-App/rosmaster/`
 
-## Jetson 小车侧说明
+| 文件 | 作用 |
+|------|------|
+| `start_nav_docker.sh` | 一键 docker start + 三终端 n1/n2/n3 |
+| `start_patrol_host.sh` | 启动 6700 + YOLO（`--display` / `--bg`） |
+| `stop_patrol_host.sh` | 停止巡检进程 |
+| `patrol_detector.py` | YOLO 检测、截图、`events.jsonl`、危险区蜂鸣 |
+| `patrol_server.py` | Flask HTTP 6700 |
+| `danger_zones.json` | RViz 标定的危险多边形 |
+| `verify_danger_link.sh` | 位姿 / 多边形 / 蜂鸣自检 |
 
-- **控车**：需先启动 Rosmaster TCP 服务（端口 6000）。
-- **视频**：摄像头服务监听 6500；若 `/dev/camera_depth` 不存在，可临时 `ln -s video0`，或修改 `camera_rosmaster.py` / `camera_server.py` 使用 `/dev/video0`。
-- **YOLO 等脚本**：`object_tracking_lite.py` 等依赖 TCP 服务在线才能联动控车。
+上传 shell 脚本后若报 `$'\r'` 错误：
 
-## 项目原型图
+```bash
+sed -i 's/\r$//' start_nav_docker.sh start_patrol_host.sh verify_danger_link.sh
+```
 
-### 网络配置界面（NetworkSettings）
-
-![NetworkSettings.png](./doc/prototype/NetworkSettings.png)
-
-### 主页界面（Index）
-
-![Index.png](./doc/prototype/Index.png)
-
-### 麦克纳姆轮界面（MecanumWheel）
-
-![MecanumWheel.png](./doc/prototype/MecanumWheel.png)
-
-### 控制界面状态1（RemoteControl1）
-
-![RemoteControl1.png](./doc/prototype/RemoteControl1.png)
-
-### 控制界面状态2（RemoteControl2）
-
-![RemoteControl2.png](./doc/prototype/RemoteControl2.png)
-
-## ROS / HTTP API
-
-- **TCP 控车协议**：[doc/ros_api.md](./doc/ros_api.md)（端口 6000，`$cmd...#` 帧格式）
-- **HTTP 视频**：`GET http://{小车IP}:6500/index2`，由 App 内 Web 组件展示，无额外 REST 封装
+---
 
 ## 文件结构
 
 ```
 oh-ai-car-ros-app
-├─ AppScope
-│  └─ app.json5                    # 应用包名与版本
 ├─ doc
-│  ├─ prototype/                   # 界面原型图
-│  └─ ros_api.md                   # TCP 协议文档
-├─ entry
-│  └─ src/main
-│     ├─ ets
-│     │  ├─ CarUtill/              # 控车 API、编码、枚举
-│     │  ├─ components/            # 摇杆、按钮、视频组件
-│     │  ├─ pages/                 # 网络配置、主页、遥控、麦轮
-│     │  ├─ tcp/                   # TCPClientManager 单例连接
-│     │  └─ utils/                 # Preferences、屏幕等工具
-│     ├─ syscap.json               # 设备能力裁剪
-│     └─ module.json5              # 模块配置与 INTERNET 权限
-├─ Rocker/                         # 摇杆子模块（Canvas 摇杆）
-├─ build-profile.json5             # SDK 12 / OpenHarmony 编译配置
-├─ hvigor/hvigor-config.json5
+│  ├─ prototype/              # 界面原型图
+│  └─ ros_api.md              # TCP 6000 协议
+├─ jetson/patrol/             # 智检哨兵 Jetson 脚本与文档
+│  ├─ patrol_detector.py
+│  ├─ patrol_server.py
+│  ├─ start_patrol_host.sh / stop_patrol_host.sh
+│  ├─ danger_zones.json
+│  ├─ danger_zone_utils.py / pose_reader.py / rosmaster_buzzer.py
+│  ├─ verify_danger_link.sh
+│  ├─ README.md
+│  └─ INTEGRATION.md
+├─ entry/src/main/ets
+│  ├─ CarUtill/               # 控车编码、CarApi
+│  ├─ components/             # 摇杆、视频、按钮
+│  ├─ pages/                  # NetworkSettings、Index、RemoteControl、PatrolPage…
+│  ├─ patrol/                 # PatrolApi、PatrolEventModel
+│  ├─ tcp/                    # TCPClientManager
+│  └─ utils/                  # Preferences、MjpegFramePoller、VideoConfig
+├─ Rocker/                    # Canvas 摇杆子模块
+├─ tools/                     # PC 端工具（G29 方向盘控车等）
+│  ├─ logitech_g29_drive.py
+│  └─ README.md
+├─ 智能小车使用手册.md         # Yahboom 原厂手册（建图、Docker、导航）
 └─ readme.md
 ```
 
+---
+
+## API 索引
+
+| 类型 | 文档 / 地址 |
+|------|-------------|
+| TCP 控车 | [doc/ros_api.md](./doc/ros_api.md) |
+| 视频 | `GET http://{ip}:6500/index2` |
+| 巡检健康 | `GET http://{ip}:6700/health` |
+| 巡检事件 | `GET http://{ip}:6700/events` |
+| 告警截图 | `GET http://{ip}:6700/snapshot/{filename}` |
+
+---
+
+## 项目原型图
+
+### 网络配置（NetworkSettings）
+
+![NetworkSettings.png](./doc/prototype/NetworkSettings.png)
+
+### 主页（Index）
+
+![Index.png](./doc/prototype/Index.png)
+
+### 麦克纳姆轮（MecanumWheel）
+
+![MecanumWheel.png](./doc/prototype/MecanumWheel.png)
+
+### 遥控（RemoteControl）
+
+![RemoteControl1.png](./doc/prototype/RemoteControl1.png)
+
+![RemoteControl2.png](./doc/prototype/RemoteControl2.png)
+
+---
+
 ## 后续规划
 
-- **多车同步遥控**：App 侧多 TCP 连接 + 指令广播；视频仍只显示主车画面；连接策略为「连上几辆控几辆」。尚未合入当前代码。
+- **多车同步遥控**：多 TCP 连接 + 广播；视频仍只显示主车
+- ~~**PC 罗技方向盘控车**~~ → 已实现，见 [tools/logitech_g29_drive.py](./tools/logitech_g29_drive.py)（G29 + pygame + TCP 6000）
+- **巡检地图钉**：事件携带 map 位姿，App 地图展示
+- **person 投影到 map**：相机标定 + 距离估算（危险区精确定位）
+
+---
+
+## 参考
+
+- Yahboom 小车实验流程：[智能小车使用手册.md](./智能小车使用手册.md)（3.7 建图导航、3.10 雷达警卫等）
+- 巡检脚本细节：[jetson/patrol/README.md](./jetson/patrol/README.md)

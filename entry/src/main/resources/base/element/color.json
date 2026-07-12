@@ -31,6 +31,26 @@
     {
       "name": "track_select_background",
       "value": "#ec761d"
+    },
+    {
+      "name": "card_background",
+      "value": "#FFFDF8F3"
+    },
+    {
+      "name": "card_border",
+      "value": "#33EC761D"
+    },
+    {
+      "name": "surface_dark",
+      "value": "#FF2A2118"
+    },
+    {
+      "name": "accent_dark",
+      "value": "#FFC45A12"
+    },
+    {
+      "name": "chip_background",
+      "value": "#33EC761D"
     }
   ]
 }

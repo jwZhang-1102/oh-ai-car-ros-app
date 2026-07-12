@@ -1,28 +1,38 @@
 /**
  * 麦克纳姆轮单独控制界面
  */
-import { carApi } from '../CarUtill/CarApi';
-import { CarEncode } from '../CarUtill/CarEncode';
-import { CarRockerComponents } from '../components/CarRockerComponents';
+import router from '@ohos.router'
+import { carApi } from '../CarUtill/CarApi'
+import { CarEncode } from '../CarUtill/CarEncode'
+import { CarRockerComponents } from '../components/CarRockerComponents'
+import { ButtonShadow, CardShadow } from '../styles/styles'
+import { PageHeader } from '../components/PageHeader'
 
 const TAG = 'SmartCarMecanumWheel'
 
 @Entry
 @Component
 struct MecanumWheel {
-  @State message: string = 'Hello World';
   /**左前轮*/
-  @State L1Value: number = 0;
+  @State L1Value: number = 0
   /**左后轮*/
-  @State L2Value: number = 0;
+  @State L2Value: number = 0
   /**前后轮*/
-  @State R1Value: number = 0;
+  @State R1Value: number = 0
   /**右后轮*/
-  @State R2Value: number = 0;
+  @State R2Value: number = 0
 
   build() {
+    Column({ space: '12vp' }) {
+      PageHeader({
+        title: '麦科朗姆',
+        subtitle: '四轮独立调速 + 摇杆辅助',
+        showBack: true,
+        onBack: () => router.back()
+      })
+        .padding({ left: '20vp', right: '20vp', top: '16vp' })
 
-    Row() {
+      Row({ space: '16vp' }) {
       // 左侧一条
       Column() {
         // 前后轮单独控制
@@ -43,7 +53,6 @@ struct MecanumWheel {
         .padding({ left: '30vp', right: '30vp' })
         .justifyContent(FlexAlign.Center)
         .layoutWeight(1)
-        .myBroderStyles()
 
         // 遥杆
         Column() {
@@ -54,13 +63,16 @@ struct MecanumWheel {
         .width('100%')
         .height(0)
         .layoutWeight(1)
-        .myBroderStyles()
       }
       .height('100%')
       .width(0)
       .layoutWeight(1)
       .justifyContent(FlexAlign.Center)
-      .myBroderStyles()
+      .padding('16vp')
+      .backgroundColor($r('app.color.card_background'))
+      .borderRadius('16vp')
+      .border({ width: '1vp', color: $r('app.color.card_border') })
+      .shadow(CardShadow)
 
       // 右侧一条
       Column() {
@@ -80,17 +92,16 @@ struct MecanumWheel {
         .padding({ left: '30vp', right: '30vp' })
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
-        .myBroderStyles()
 
-        Row() {
-
+        Row({ space: '12vp' }) {
           Button('更新速度')
             .onClick(() => {
-              // 发送车辆速度
-              this.sendSpeed();
+              this.sendSpeed()
             })
             .fontSize($r('app.float.float_1'))
+            .fontColor($r('app.color.button_text'))
             .backgroundColor($r('app.color.button_background'))
+            .shadow(ButtonShadow)
 
           Button('全部归零')
             .onClick(() => {
@@ -98,45 +109,35 @@ struct MecanumWheel {
               this.L2Value = 0
               this.R1Value = 0
               this.R2Value = 0
-              // 发送车辆速度
-              this.sendSpeed();
+              this.sendSpeed()
             })
             .fontSize($r('app.float.float_1'))
+            .fontColor($r('app.color.button_text'))
             .backgroundColor($r('app.color.button_background'))
+            .shadow(ButtonShadow)
         }
         .height(0)
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
-        .myBroderStyles()
       }
       .height('100%')
       .width(0)
       .layoutWeight(1)
       .justifyContent(FlexAlign.Center)
-      .myBroderStyles()
-
+      .padding('16vp')
+      .backgroundColor($r('app.color.card_background'))
+      .borderRadius('16vp')
+      .border({ width: '1vp', color: $r('app.color.card_border') })
+      .shadow(CardShadow)
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .padding({ left: '20vp', right: '20vp', bottom: '20vp' })
     }
     .width('100%')
     .height('100%')
-    .padding({
-      left: '10vp',
-      right: '10vp',
-      top: '30vp',
-      bottom: '30vp'
-    })
     .backgroundColor($r('app.color.window_background'))
-
-  }
-
-  /**边框样式*/
-  @Styles
-  myBroderStyles() {
-    .border({
-      radius: '10vp',
-      color: Color.Gray,
-      width: '0vp'
-    })
   }
 
   /**
@@ -179,7 +180,7 @@ struct SliderComponent {
       )
         .width('30vp')
         .textAlign(TextAlign.Center)
-        .fontColor($r('app.color.text'))
+        .fontColor($r('app.color.text_on_light'))
         .fontSize($r('app.float.float_1'))
 
 

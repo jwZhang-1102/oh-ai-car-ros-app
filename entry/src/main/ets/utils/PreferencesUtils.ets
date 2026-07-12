@@ -41,6 +41,14 @@ export class NetInfoPreferencesUtils {
   public static readonly KEY_TCP_PORT = "KEY_TCP_PORT";
   /**KEY IP*/
   public static readonly KEY_VIDEO_PORT = "KEY_TCP_VIDEO";
+  /**KEY 巡检端口*/
+  public static readonly KEY_PATROL_PORT = "KEY_PATROL_PORT";
+  /**KEY 启用 TCP 控车*/
+  public static readonly KEY_ENABLE_TCP = "KEY_ENABLE_TCP";
+  /**KEY 启用视频*/
+  public static readonly KEY_ENABLE_VIDEO = "KEY_ENABLE_VIDEO";
+  /**KEY 启用巡检*/
+  public static readonly KEY_ENABLE_PATROL = "KEY_ENABLE_PATROL";
   /**首选项实例*/
   private pref: preferences.Preferences | null = null
 
@@ -107,6 +115,66 @@ export class NetInfoPreferencesUtils {
       return Promise.resolve('6500')
     }
     return this.pref.get(NetInfoPreferencesUtils.KEY_VIDEO_PORT, '6500')
+  }
+
+  setPatrolPort(v: string) {
+    if (this.pref === null) {
+      return
+    }
+    this.pref.put(NetInfoPreferencesUtils.KEY_PATROL_PORT, v)
+    this.pref.flush()
+  }
+
+  getPatrolPort() {
+    if (this.pref === null) {
+      return Promise.resolve('6700')
+    }
+    return this.pref.get(NetInfoPreferencesUtils.KEY_PATROL_PORT, '6700')
+  }
+
+  setEnableTcp(v: boolean) {
+    if (this.pref === null) {
+      return
+    }
+    this.pref.put(NetInfoPreferencesUtils.KEY_ENABLE_TCP, v)
+    this.pref.flush()
+  }
+
+  getEnableTcp() {
+    if (this.pref === null) {
+      return Promise.resolve(true)
+    }
+    return this.pref.get(NetInfoPreferencesUtils.KEY_ENABLE_TCP, true)
+  }
+
+  setEnableVideo(v: boolean) {
+    if (this.pref === null) {
+      return
+    }
+    this.pref.put(NetInfoPreferencesUtils.KEY_ENABLE_VIDEO, v)
+    this.pref.flush()
+  }
+
+  getEnableVideo() {
+    if (this.pref === null) {
+      return Promise.resolve(false)
+    }
+    return this.pref.get(NetInfoPreferencesUtils.KEY_ENABLE_VIDEO, false)
+  }
+
+  setEnablePatrol(v: boolean) {
+    if (this.pref === null) {
+      return
+    }
+    this.pref.put(NetInfoPreferencesUtils.KEY_ENABLE_PATROL, v)
+    this.pref.flush()
+  }
+
+  getEnablePatrol() {
+    if (this.pref === null) {
+      return Promise.resolve(true)
+    }
+    return this.pref.get(NetInfoPreferencesUtils.KEY_ENABLE_PATROL, true)
   }
 }
 

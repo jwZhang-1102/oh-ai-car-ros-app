@@ -3,18 +3,15 @@ import hilog from '@ohos.hilog';
 import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
+import web_webview from '@ohos.web.webview';
 import { ScreenUtils } from "../utils/ScreenUtils"
-import { TCPClientManager } from '../tcp/TCPClientManager';
-import { TCPClientSendUtils } from '../tcp/TCPClientSendUtils';
 import { PreferencesUtils } from '../utils/PreferencesUtils';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
-
-    // 初始化首选项单例
+    web_webview.WebviewController.initializeWebEngine();
     PreferencesUtils.getInstance().init(this.context)
-
   }
 
   onDestroy(): void {

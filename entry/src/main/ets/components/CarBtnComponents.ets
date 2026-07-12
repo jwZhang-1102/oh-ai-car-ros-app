@@ -9,9 +9,9 @@ import { ButtonShadow } from '../styles/styles'
 struct CarBtnComponents {
   build() {
     Grid() {
-      // 第一行
       GridItem() {
         Button("左转")
+          .fontSize('13fp')
           .backgroundColor($r('app.color.button_background'))
           .shadow(ButtonShadow)
           .width('100%')
@@ -81,8 +81,12 @@ struct CarBtnComponents {
 
       GridItem()
     }
+    .width('100%')
+    .height('100%')
     .rowsTemplate('1fr 1fr 1fr')
     .columnsTemplate('1fr 1fr 1fr')
+    .columnsGap('6vp')
+    .rowsGap('6vp')
   }
 
   /**

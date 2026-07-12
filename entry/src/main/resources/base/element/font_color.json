@@ -7,6 +7,18 @@
     {
       "name": "text",
       "value": "#E3E3E7"
+    },
+    {
+      "name": "text_on_light",
+      "value": "#FF3D2F1F"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#996B4A2E"
+    },
+    {
+      "name": "text_muted",
+      "value": "#B36B4A2E"
     }
   ]
 }
