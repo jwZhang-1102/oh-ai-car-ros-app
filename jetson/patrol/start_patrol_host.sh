@@ -1,4 +1,9 @@
 #!/bin/bash
+# 从 Windows scp 后若脚本报错，自动去掉 CRLF 并重新执行
+if grep -q $'\r' "$0" 2>/dev/null; then
+  sed -i 's/\r$//' "$0" *.sh 2>/dev/null || sed -i 's/\r$//' "$0"
+  exec bash "$0" "$@"
+fi
 # 智检哨兵：宿主机启动 HTTP + YOLO 检测（不占 6500 视频）
 # 默认已与 Docker 导航并行安全（不占底盘串口）
 #
@@ -57,8 +62,8 @@ if [ "$DISPLAY_WIN" = true ]; then
   echo "[patrol] WARN: --display 占用 GPU/CPU，导航卡顿时请去掉 --display 或加 --nav-lite"
 fi
 if [ "$MISSION_MODE" = true ]; then
-  DETECTOR_ARGS+=(--pause-nav-on-alert --alert-stop-classes person,bottle,chair)
-  echo "[patrol] mission 模式：检出 person/bottle/chair → 暂停 Nav2 + 记录事件"
+  DETECTOR_ARGS+=(--targets bottle --pause-nav-on-alert --alert-stop-classes bottle)
+  echo "[patrol] mission 模式：仅检出 bottle → 暂停 Nav2 + 蜂鸣 + 记录事件"
   echo "[patrol] 恢复导航: curl -X POST http://127.0.0.1:6700/mission/resume"
 fi
 
@@ -143,6 +148,17 @@ else
   echo "  提示: 无 danger_zones.json，危险区联动未启用"
 fi
 echo ""
+
+if [ "$MISSION_MODE" = true ]; then
+  echo "[patrol] mission: 重置任务状态（避免上次 alert_stopped 跳过蜂鸣）..."
+  if curl -sf -X POST http://127.0.0.1:6700/mission/start >/dev/null; then
+    echo "[patrol] mission/start OK → state=navigating"
+  else
+    echo "[patrol] WARN: mission/start 失败，请检查 mission_waypoints.json 或:"
+    echo "         curl -X POST http://127.0.0.1:6700/mission/start"
+    echo "         或 rm -f mission_state.json 后重启"
+  fi
+fi
 
 if [ "$BACKGROUND" = true ]; then
   echo "[patrol] 后台启动 patrol_detector ..."

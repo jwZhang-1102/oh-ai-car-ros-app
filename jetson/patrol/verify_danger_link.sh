@@ -96,13 +96,12 @@ sys.path.insert(0, ".")
 from rosmaster_buzzer import BuzzerController, encode_buzzer_tcp
 
 print("  TCP 帧(500ms):", encode_buzzer_tcp(500).decode())
-b = BuzzerController()
-backend = "Rosmaster_Lib" if b.available else "TCP:6000"
-print(f"  backend={backend}")
+b = BuzzerController(prefer_lib=False, prefer_docker=True)
+print(f"  backend=prefer_docker (ros2:/beep → Rosmaster → TCP)")
 ok = b.beep(500)
-print(f"  beep(500) -> {'成功（应听到短响）' if ok else '失败'}")
+print(f"  beep(500) -> {'成功（应听到短响）' if ok else '失败'} backend={b.last_backend or 'none'}")
 if not ok:
-    print("  提示: 先运行 ros/run 或确保 TCP 6000 在线: ss -tlnp | grep 6000")
+    print("  提示: 先 n1，再测: docker exec <cid> bash -lc \"ros2 topic list | grep beep\"")
 PY
 
 echo ""

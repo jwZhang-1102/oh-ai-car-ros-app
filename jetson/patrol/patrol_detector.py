@@ -307,7 +307,8 @@ def save_event(
         }
     if zone is not None:
         event["danger_zone"] = zone.name
-        event["buzzer"] = buzzer
+    if buzzer:
+        event["buzzer"] = True
     if mission_state is not None:
         event["mission_state"] = mission_state
     if nav_paused:
@@ -321,9 +322,12 @@ def save_event(
     pose_txt = ""
     if pose is not None:
         pose_txt = f" pose=({pose.x:.2f},{pose.y:.2f})"
+    beep_txt = ""
+    if mission_state is not None:
+        beep_txt = f" beep={'on' if buzzer else 'off'}"
     msg = (
         f"{tag} {event['time']} class={cls_name} conf={conf:.2f}"
-        f"{zone_txt}{pose_txt} snapshot={shot_name}"
+        f"{zone_txt}{pose_txt}{beep_txt} snapshot={shot_name}"
     )
     print(msg, flush=True)
     return eid
@@ -419,17 +423,38 @@ def main() -> None:
             tcp_host=args.tcp_host,
             tcp_port=args.tcp_port,
             prefer_lib=prefer_lib,
+            prefer_docker=args.docker_nav and not args.buzzer_tcp_only,
+            docker_container=docker_cid,
         )
         if prefer_lib and buzzer.available:
             src = "Rosmaster_Lib"
+        elif args.docker_nav and not args.buzzer_tcp_only:
+            src = "docker ros2:/beep → 容器底盘节点（n1 并行）"
         elif prefer_lib:
             src = "TCP {0}:{1}（串口留给 Docker 导航）".format(
                 args.tcp_host, args.tcp_port)
         else:
-            src = "TCP-only {0}:{1}（Docker 并行模式，未占串口）".format(
-                args.tcp_host, args.tcp_port)
+            src = "TCP-only {0}:{1}".format(args.tcp_host, args.tcp_port)
         print(
             f"[patrol_detector] 蜂鸣器 backend={src} duration={args.buzzer_ms}ms",
+            flush=True,
+        )
+    mission_buzzer = buzzer
+    if (
+        args.pause_nav_on_alert
+        and not args.no_buzzer
+        and mission_buzzer is None
+    ):
+        mission_buzzer = BuzzerController(
+            tcp_host=args.tcp_host,
+            tcp_port=args.tcp_port,
+            prefer_lib=False,
+            prefer_docker=args.docker_nav and not args.buzzer_tcp_only,
+            docker_container=docker_cid,
+        )
+        print(
+            f"[patrol_detector] mission 蜂鸣器 backend=docker ros2:/beep "
+            f"duration={args.buzzer_ms}ms",
             flush=True,
         )
     if args.docker_nav:
@@ -520,7 +545,7 @@ def main() -> None:
                                     alert_pose.x, alert_pose.y, zones,
                                 )
                                 if zone is not None and buzzer is not None:
-                                    trigger_buzzer = buzzer.beep(args.buzzer_ms)
+                                    trigger_buzzer = buzzer.beep_alert(args.buzzer_ms)
                                     if not trigger_buzzer and not buzzer_warned:
                                         print(
                                             "[patrol_detector] WARN: 蜂鸣器触发失败"
@@ -556,6 +581,35 @@ def main() -> None:
                                     mission_resp.get("state", "alert_stopped")
                                 )
                                 nav_paused = bool(mission_resp.get("nav_paused", True))
+                                if mission_resp.get("beep"):
+                                    trigger_buzzer = True
+                                elif mission_buzzer is not None:
+                                    if mission_buzzer.beep_alert(args.buzzer_ms):
+                                        trigger_buzzer = True
+                                    elif not mission_resp.get("skipped"):
+                                        print(
+                                            "[patrol_detector] WARN: mission 蜂鸣失败"
+                                            "（需 n1 运行且容器内有 /beep 话题）",
+                                            flush=True,
+                                        )
+                                elif mission_resp.get("skipped"):
+                                    print(
+                                        "[patrol_detector] INFO: mission 已在停车状态"
+                                        "（skipped），本地蜂鸣未配置",
+                                        flush=True,
+                                    )
+                                elif not mission_resp.get("skipped"):
+                                    print(
+                                        "[patrol_detector] WARN: mission 蜂鸣失败"
+                                        "（需 n1 运行且容器内有 /beep 话题）",
+                                        flush=True,
+                                    )
+                            else:
+                                print(
+                                    "[patrol_detector] WARN: mission alert 未送达"
+                                    " patrol_server（检查 nav_mission_coordinator.py）",
+                                    flush=True,
+                                )
 
                         save_event(
                             frame, cls_name, conf,

@@ -142,7 +142,7 @@ def main() -> None:
     docker_cid = args.docker_container.strip() or None
     buzzer: Optional[BuzzerController] = None
     if not args.no_buzzer:
-        buzzer = BuzzerController(prefer_lib=False)
+        buzzer = BuzzerController(prefer_lib=False, prefer_docker=True)
 
     print(
         f"[danger_zone_lidar] 启动 frame={frame_id} zones={len(zones)} "
@@ -198,7 +198,7 @@ def main() -> None:
                     zone, cluster = hits[0]
                     triggered = False
                     if buzzer is not None:
-                        triggered = buzzer.beep(args.buzzer_ms)
+                        triggered = buzzer.beep_alert(args.buzzer_ms)
                         if not triggered and not buzzer_warned:
                             print(
                                 "[danger_zone_lidar] WARN: 蜂鸣失败（并行导航时常见）",

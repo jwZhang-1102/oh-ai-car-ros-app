@@ -249,7 +249,9 @@ class MissionCoordinator:
         self._nav = NavDockerControl(docker_container)
         self._buzzer_ms = buzzer_ms
         self._buzzer = BuzzerController(
-            tcp_host=tcp_host, tcp_port=tcp_port, prefer_lib=False,
+            tcp_host=tcp_host, tcp_port=tcp_port,
+            prefer_lib=False, prefer_docker=True,
+            docker_container=docker_container,
         )
         self._lock = threading.Lock()
         self._status = MissionStatus()
@@ -422,16 +424,18 @@ class MissionCoordinator:
                 MissionState.ALERT_STOPPED.value,
                 MissionState.MANUAL_OVERRIDE.value,
             ):
+                beep_ok = self._buzzer.beep_alert(self._buzzer_ms)
                 return {
                     "ok": True,
                     "state": self._status.state,
                     "nav_paused": True,
                     "skipped": True,
-                    "message": "已在停车/接管状态",
+                    "beep": beep_ok,
+                    "message": "已在停车/接管状态（仍蜂鸣提醒）",
                 }
 
             pause_note = self._pause_navigation()
-            beep_ok = self._buzzer.beep(self._buzzer_ms)
+            beep_ok = self._buzzer.beep_alert(self._buzzer_ms)
 
             self._status.last_alert_class = cls_name
             self._status.last_alert_event_id = event_id

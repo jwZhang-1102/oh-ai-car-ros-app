@@ -3,7 +3,7 @@
 目标流程：
 
 1. RViz 设起点、终点，小车自动导航  
-2. YOLO 检出 **person / bottle / chair** → **暂停 Nav2、停车、记录事件**  
+2. YOLO 检出 **bottle** → **暂停 Nav2、停车、蜂鸣、记录事件**  
 3. 操作员 **人工绕过** 异物  
 4. **恢复导航** 至原终点（`mission_waypoints.json`）
 
@@ -38,6 +38,7 @@ scp jetson/patrol/nav_mission_coordinator.py \
     jetson/patrol/mission_waypoints.json \
     jetson/patrol/patrol_server.py \
     jetson/patrol/patrol_detector.py \
+    jetson/patrol/rosmaster_buzzer.py \
     jetson/patrol/start_patrol_host.sh \
     jetson/patrol/start_mission_nav.sh \
     jetson@10.147.13.194:~/Rosmaster-App/rosmaster/
@@ -89,11 +90,10 @@ bash start_mission_nav.sh
 
 ### 5. 触发告警
 
-路上放 **瓶子 / 椅子**（或 person）→ 日志：
+路上放 **瓶子** → 日志：
 
-```
-[ALERT] ... class=bottle ...
-[mission] ALERT_STOPPED ...
+```text
+[ALERT] ... class=bottle ... beep=on ...
 ```
 
 `events.jsonl` 增加字段：`mission_state`, `nav_paused`。
@@ -179,7 +179,7 @@ idle → navigating → alert_stopped → manual_override
 | 串口 | Docker `n1` 占 `/dev/myserial`，勿开宿主机 `ros/run` |
 | TCP 6000 | 人工绕障用 **HTTP teleop → /cmd_vel**，不用 App TCP |
 | 摄像头 | 勿开 6500 视频推流，YOLO 占 video0 |
-| 蜂鸣 | 并行导航时蜂鸣可能失败（TCP 6000 未开），事件仍会记录 |
+| 蜂鸣 | mission 模式经容器 `/beep` 话题（需 n1）；失败见 `patrol_server.log` 中 `beep=fail` |
 | 终点 | **resume 依赖 mission_waypoints.json**，必须与真实 Goal 一致 |
 | Nav2 暂停 | 优先 `bt_navigator/pause`；若无该服务则 cancel goal + cmd_vel 零 |
 
