@@ -8,6 +8,7 @@
 #   bash start_patrol_host.sh --display          # 接显示器看检测框（导航可能变卡）
 #   bash start_patrol_host.sh --nav-lite --bg    # 导航仍卡顿时：CPU 轻量推理
 #   bash start_patrol_host.sh --buzzer-serial    # 仅巡检单机：启用串口蜂鸣（勿与 n1 并行）
+#   bash start_patrol_host.sh --mission --bg     # 导航任务：YOLO 告警自动停车+可恢复
 set -e
 ROOT=~/Rosmaster-App/rosmaster
 cd "$ROOT"
@@ -16,18 +17,20 @@ BACKGROUND=false
 DISPLAY_WIN=false
 BUZZER_SERIAL=false
 NAV_LITE=false
+MISSION_MODE=false
 for arg in "$@"; do
   case "$arg" in
     --bg) BACKGROUND=true ;;
     --display) DISPLAY_WIN=true ;;
     --buzzer-serial) BUZZER_SERIAL=true ;;
     --nav-lite) NAV_LITE=true ;;
+    --mission) MISSION_MODE=true ;;
     --docker-nav)
       echo "[patrol] 提示: --docker-nav 已是默认行为，可省略"
       ;;
     *)
       echo "未知参数: $arg"
-      echo "用法: bash start_patrol_host.sh [--display] [--bg] [--nav-lite] [--buzzer-serial]"
+      echo "用法: bash start_patrol_host.sh [--display] [--bg] [--nav-lite] [--buzzer-serial] [--mission]"
       exit 1
       ;;
   esac
@@ -52,6 +55,11 @@ fi
 if [ "$DISPLAY_WIN" = true ]; then
   DETECTOR_ARGS+=(--display)
   echo "[patrol] WARN: --display 占用 GPU/CPU，导航卡顿时请去掉 --display 或加 --nav-lite"
+fi
+if [ "$MISSION_MODE" = true ]; then
+  DETECTOR_ARGS+=(--pause-nav-on-alert --alert-stop-classes person,bottle,chair)
+  echo "[patrol] mission 模式：检出 person/bottle/chair → 暂停 Nav2 + 记录事件"
+  echo "[patrol] 恢复导航: curl -X POST http://127.0.0.1:6700/mission/resume"
 fi
 
 STOPPED=false
@@ -101,6 +109,10 @@ if [ ! -f patrol_detector.py ]; then
   echo "错误: 找不到 patrol_detector.py"
   exit 1
 fi
+if [ "$MISSION_MODE" = true ] && [ ! -f nav_mission_coordinator.py ]; then
+  echo "错误: --mission 需要 nav_mission_coordinator.py"
+  exit 1
+fi
 
 echo "[patrol] 启动 patrol_server :6700 ..."
 nohup python3 patrol_server.py > patrol_server.log 2>&1 &
@@ -120,6 +132,11 @@ echo "=== 巡检服务 ==="
 echo "  HTTP  http://$(hostname -I | awk '{print $1}'):6700/events"
 echo "  事件  tail -f events.jsonl"
 echo "  截图  ls capture/patrol/"
+if [ "$MISSION_MODE" = true ]; then
+  echo "  任务  curl http://127.0.0.1:6700/mission/status"
+  echo "  恢复  curl -X POST http://127.0.0.1:6700/mission/resume"
+  echo "  终点  编辑 mission_waypoints.json 或 POST /mission/set_end"
+fi
 if [ -f danger_zones.json ]; then
   echo "  危险区 danger_zones.json 已加载（并行模式蜂鸣可能不可用）"
 else

@@ -22,6 +22,8 @@ import argparse
 import json
 import sys
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -155,7 +157,53 @@ def parse_args() -> argparse.Namespace:
         help="蜂鸣 TCP 回退地址（cmd=13）",
     )
     p.add_argument("--tcp-port", type=int, default=6000, help="蜂鸣 TCP 端口")
+    p.add_argument(
+        "--pause-nav-on-alert",
+        action="store_true",
+        help="检出异物后通知任务协调器暂停 Nav2 并停车",
+    )
+    p.add_argument(
+        "--alert-stop-classes",
+        default="person,bottle,chair",
+        help="触发停车告警的类别（逗号分隔），需配合 --pause-nav-on-alert",
+    )
+    p.add_argument(
+        "--mission-url",
+        default="http://127.0.0.1:6700/mission/alert",
+        help="任务协调器告警接口（patrol_server 提供）",
+    )
     return p.parse_args()
+
+
+def notify_mission_alert(
+    mission_url: str,
+    cls_name: str,
+    event_id: str,
+    confidence: float,
+    timeout: float = 3.0,
+) -> Dict[str, object]:
+    """通知 patrol_server 暂停导航；失败时返回空 dict。"""
+    payload = json.dumps({
+        "class": cls_name,
+        "event_id": event_id,
+        "confidence": confidence,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        mission_url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8")
+            return json.loads(body) if body else {}
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
+        print(
+            f"[patrol_detector] WARN: mission alert 通知失败: {exc}",
+            flush=True,
+        )
+        return {}
 
 
 def load_model(weights: str, device_name: str):
@@ -233,15 +281,19 @@ def save_event(
     pose: Optional[MapPose] = None,
     zone: Optional[DangerZone] = None,
     buzzer: bool = False,
-) -> None:
+    mission_state: Optional[str] = None,
+    nav_paused: bool = False,
+    event_id: Optional[str] = None,
+) -> str:
     PATROL_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shot_name = f"{ts}_{cls_name}.jpg"
+    eid = event_id or f"{ts}_{cls_name}"
+    shot_name = f"{eid}.jpg" if event_id else f"{ts}_{cls_name}.jpg"
     shot_path = PATROL_DIR / shot_name
     cv2.imwrite(str(shot_path), frame)
 
     event: Dict[str, object] = {
-        "id": f"{ts}_{cls_name}",
+        "id": eid,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "class": cls_name,
         "confidence": round(conf, 3),
@@ -256,6 +308,10 @@ def save_event(
     if zone is not None:
         event["danger_zone"] = zone.name
         event["buzzer"] = buzzer
+    if mission_state is not None:
+        event["mission_state"] = mission_state
+    if nav_paused:
+        event["nav_paused"] = True
 
     with EVENTS_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
@@ -270,6 +326,7 @@ def save_event(
         f"{zone_txt}{pose_txt} snapshot={shot_name}"
     )
     print(msg, flush=True)
+    return eid
 
 
 def main() -> None:
@@ -297,6 +354,15 @@ def main() -> None:
 
     targets: Set[str] = {t.strip() for t in args.targets.split(",") if t.strip()}
     danger_class = args.danger_class.strip()
+    alert_stop_classes: Set[str] = {
+        t.strip() for t in args.alert_stop_classes.split(",") if t.strip()
+    }
+    if args.pause_nav_on_alert:
+        print(
+            f"[patrol_detector] pause-nav-on-alert: stop_classes="
+            f"{sorted(alert_stop_classes)} url={args.mission_url}",
+            flush=True,
+        )
 
     zones: List[DangerZone] = []
     zones_enabled = not args.no_zones
@@ -470,9 +536,33 @@ def main() -> None:
                                 )
                                 pose_warned = True
 
+                        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        event_id = f"{ts}_{cls_name}"
+                        mission_state: Optional[str] = None
+                        nav_paused = False
+
+                        if (
+                            args.pause_nav_on_alert
+                            and cls_name in alert_stop_classes
+                        ):
+                            mission_resp = notify_mission_alert(
+                                args.mission_url,
+                                cls_name,
+                                event_id,
+                                conf,
+                            )
+                            if mission_resp.get("ok"):
+                                mission_state = str(
+                                    mission_resp.get("state", "alert_stopped")
+                                )
+                                nav_paused = bool(mission_resp.get("nav_paused", True))
+
                         save_event(
                             frame, cls_name, conf,
                             pose=alert_pose, zone=zone, buzzer=trigger_buzzer,
+                            mission_state=mission_state,
+                            nav_paused=nav_paused,
+                            event_id=event_id,
                         )
                         last_alert[cls_name] = now
                         streak[cls_name] = 0

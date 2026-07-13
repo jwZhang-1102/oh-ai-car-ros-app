@@ -186,6 +186,25 @@ bash check_nav_parallel.sh
 
 并行时 **危险区蜂鸣** 可能不可用；`[ALERT]` / App 事件仍正常。
 
+### 方案一：激光雷达 —— 人在危险区（无 App / 无 YOLO）
+
+```bash
+# 容器：n1 → n2 → n3，RViz 2D Pose Estimate
+# 宿主机：
+cd ~/Rosmaster-App/rosmaster
+bash start_danger_lidar.sh --bg
+tail -f danger_zone_lidar.log
+```
+
+| 项目 | 说明 |
+|------|------|
+| 数据源 | Docker `/scan` + `/amcl_pose` |
+| 规则 | 激光人体尺度团块 **map 坐标** 落在 `danger_zones.json` 内 |
+| 日志 | `[DANGER-LIDAR]` |
+| 算力 | 不跑 YOLO，利于与导航长期并行 |
+
+注意：激光无法 100% 区分人与柱子，靠团块尺寸过滤；有人站在危险区且被雷达扫到腿/身才触发。
+
 ### n3 终端一片红字 / lifecycle_manager 报错
 
 若日志里大量出现 `signal_handler(signal_value=2)`、`context is not valid`、`Failed to change state for node: controller_server`，**多数是 n3 已被 Ctrl+C 中断或 launch 正在退出**，红字往往是 **Foxy 关停时的连锁报错**，不一定是根因。

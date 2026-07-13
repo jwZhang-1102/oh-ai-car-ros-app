@@ -55,19 +55,44 @@ bash stop_patrol_host.sh
 
 ## 危险区蜂鸣（可选）
 
+### 方案 A：YOLO + 车在危险区（原有）
+
 1. RViz **Publish Point** 点 4 角 → 写入 `danger_zones.json`
 2. Docker 启动 `n1`+`n3` 导航（提供 `/amcl_pose`）
 3. 宿主机 `bash start_patrol_host.sh`（自动加载危险区）
 4. 小车进入危险区且 YOLO 检出 **person** → 终端 `[DANGER]` + 蜂鸣
 
+### 方案 B：激光雷达 + 人在危险区（推荐与导航并行）
+
+不占用摄像头/YOLO，用导航同一套 `/scan` + `/amcl_pose`：
+
+1. `danger_zones.json` 已标定（map 坐标多边形）
+2. 容器内 `n1` → `n3`，RViz **2D Pose Estimate**
+3. 宿主机：
+
 ```bash
-scp jetson/patrol/danger_zones.json jetson/patrol/danger_zone_utils.py \
-    jetson/patrol/pose_reader.py jetson/patrol/rosmaster_buzzer.py \
-    jetson/patrol/patrol_detector.py jetson/patrol/verify_danger_link.sh \
-    jetson@<IP>:~/Rosmaster-App/rosmaster/
+bash start_danger_lidar.sh --bg
+tail -f danger_zone_lidar.log
 ```
 
-一键自检（位姿 + 多边形 + 蜂鸣）：
+4. **人体尺度**激光团块落在危险区内 → `[DANGER-LIDAR]` + `events.jsonl`
+
+```bash
+scp jetson/patrol/danger_zone_lidar.py jetson/patrol/lidar_scan_utils.py \
+    jetson/patrol/danger_zones.json jetson/patrol/danger_zone_utils.py \
+    jetson/patrol/pose_reader.py jetson/patrol/rosmaster_buzzer.py \
+    jetson/patrol/start_danger_lidar.sh jetson/patrol/stop_patrol_host.sh \
+    jetson@<IP>:~/Rosmaster-App/rosmaster/
+sed -i 's/\r$//' start_danger_lidar.sh stop_patrol_host.sh
+```
+
+| 对比 | YOLO 方案 | 激光方案 |
+|------|-----------|----------|
+| 判断对象 | 车在危险区 + 看到人 | **人在危险区**（激光团块在 map 多边形内） |
+| 与导航并行 | 需 `--nav-lite` | 更轻，默认 `--poll 1.0` |
+| 占摄像头 | 是 | 否 |
+
+一键自检（位姿 + 多边形 + 激光 scan）：
 
 ```bash
 cd ~/Rosmaster-App/rosmaster
