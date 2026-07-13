@@ -1,7 +1,8 @@
+/**
+ * 主页 - 竖屏极简风格
+ */
 import router from '@ohos.router'
 import promptAction from '@ohos.promptAction'
-import { ButtonShadow, CardShadow } from '../styles/styles'
-import { PageHeader } from '../components/PageHeader'
 import { PreferencesUtils } from '../utils/PreferencesUtils'
 import { TCPClientManager } from '../tcp/TCPClientManager'
 import { VideoComponents } from '../components/VideoComponents'
@@ -10,6 +11,7 @@ import { VideoComponents } from '../components/VideoComponents'
 @Component
 struct Index {
   @State statusText: string = ''
+  @State ip: string = '192.168.1.100'
 
   aboutToAppear(): void {
     this.loadConnectionStatus()
@@ -17,24 +19,17 @@ struct Index {
 
   async loadConnectionStatus() {
     let net = PreferencesUtils.getInstance().netUtils
-    if (!net) {
-      return
-    }
+    if (!net) return
     let parts: string[] = []
-    let ip = await net.getIP() as string
-    if (await net.getEnableTcp() as boolean) {
-      parts.push(`控车 ${await net.getTcpPort()}`)
-    }
-    if (await net.getEnableVideo() as boolean) {
-      parts.push(`视频 ${await net.getVideoPort()}`)
-    }
-    if (await net.getEnablePatrol() as boolean) {
-      parts.push(`巡检 ${await net.getPatrolPort()}`)
-    }
+    let ipAddr = await net.getIP() as string
+    this.ip = ipAddr
+    if (await net.getEnableTcp() as boolean) parts.push(`控车 ${await net.getTcpPort()}`)
+    if (await net.getEnableVideo() as boolean) parts.push(`视频 ${await net.getVideoPort()}`)
+    if (await net.getEnablePatrol() as boolean) parts.push(`巡检 ${await net.getPatrolPort()}`)
     if (parts.length > 0) {
-      this.statusText = `${ip} · ${parts.join(' · ')}`
+      this.statusText = `已连接 · ${parts.join(' · ')}`
     } else {
-      this.statusText = `${ip} · 未选择端口`
+      this.statusText = `${ipAddr} · 未选择端口`
     }
   }
 
@@ -46,73 +41,95 @@ struct Index {
   }
 
   build() {
-    Column({ space: '16vp' }) {
-      Row({ space: '12vp' }) {
-        Column({ space: '4vp' }) {
-          PageHeader({
-            title: '智检哨兵',
-            subtitle: this.statusText.length > 0 ? this.statusText : '智慧小车遥控 · 巡检 · 留痕'
-          })
-        }
-        .layoutWeight(1)
-
-        Button('断开连接')
-          .fontSize('14fp')
-          .fontColor($r('app.color.button_text'))
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .onClick(() => this.disconnectAndBack())
+    Column() {
+      // 顶栏
+      Row() {
+        Text('智检哨兵')
+          .fontSize('18fp')
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_on_light'))
       }
       .width('100%')
-      .padding({ left: '24vp', right: '24vp', top: '20vp' })
-      .alignItems(VerticalAlign.Center)
+      .height('56vp')
+      .padding({ left: '16vp', right: '16vp' })
+      .justifyContent(FlexAlign.Center)
 
       Scroll() {
-        Row({ space: '24vp' }) {
-          ItemButton({
-            text: '麦科朗姆',
-            desc: '四轮独立调速',
+        Column({ space: '16vp' }) {
+          // 状态卡片
+          Column({ space: '16vp' }) {
+            Row() {
+              Row({ space: '8vp' }) {
+                Circle({ width: '10vp', height: '10vp' })
+                  .fill('#22C55E')
+                Text('已连接')
+                  .fontSize('18fp')
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor($r('app.color.text_on_light'))
+              }
+
+              Text(this.ip)
+                .fontSize('13fp')
+                .fontColor($r('app.color.text_secondary'))
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.SpaceBetween)
+
+            Button('断开连接')
+              .width('100%')
+              .height('44vp')
+              .fontSize('14fp')
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#EF4444')
+              .backgroundColor('#FEF2F2')
+              .borderRadius('12vp')
+              .onClick(() => this.disconnectAndBack())
+          }
+          .padding('18vp')
+          .backgroundColor($r('app.color.card_background'))
+          .borderRadius('16vp')
+
+          // 功能入口列表
+          FeatureCard({
             icon: $r('app.media.tire'),
-            event: () => {
-              router.pushUrl({ url: 'pages/MecanumWheel' })
-            }
+            title: '麦科朗姆',
+            desc: '控制四个麦克纳姆轮',
+            bgColor: '#DBEAFE',
+            iconColor: '#2563EB',
+            action: () => router.pushUrl({ url: 'pages/MecanumWheel' })
           })
-            .width('280vp')
-            .height('100%')
 
-          ItemButton({
-            text: '单独控制',
-            desc: '按钮 / 摇杆遥控',
+          FeatureCard({
             icon: $r('app.media.vector'),
-            event: () => {
-              router.pushUrl({ url: 'pages/RemoteControl' })
-            }
+            title: '单独控制',
+            desc: '遥控小车运动',
+            bgColor: '#E0E7FF',
+            iconColor: '#4F46E5',
+            action: () => router.pushUrl({ url: 'pages/RemoteControl' })
           })
-            .width('280vp')
-            .height('100%')
 
-          ItemButton({
-            text: '智能巡检',
-            desc: 'YOLO 事件与截图',
+          FeatureCard({
             icon: $r('app.media.patrol'),
-            event: () => {
-              router.pushUrl({ url: 'pages/PatrolPage' })
-            }
+            title: '智能巡检',
+            desc: 'AI 智能巡检检测',
+            bgColor: '#D1FAE5',
+            iconColor: '#059669',
+            action: () => router.pushUrl({ url: 'pages/PatrolPage' })
           })
-            .width('280vp')
-            .height('100%')
-        }
-        .padding({ left: '24vp', right: '24vp', bottom: '8vp' })
-        .height('100%')
-      }
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
-      .layoutWeight(1)
 
-      Text('左右滑动查看更多功能')
-        .fontSize('13fp')
-        .fontColor($r('app.color.text_muted'))
-        .margin({ bottom: '16vp' })
+          FeatureCard({
+            icon: $r('app.media.panoramic'),
+            title: '全景视角',
+            desc: '全屏显示摄像机画面',
+            bgColor: '#FEF3C7',
+            iconColor: '#D97706',
+            action: () => router.pushUrl({ url: 'pages/PanoramicView' })
+          })
+        }
+        .width('100%')
+        .padding({ left: '16vp', right: '16vp', bottom: '32vp' })
+      }
+      .layoutWeight(1)
     }
     .width('100%')
     .height('100%')
@@ -121,45 +138,46 @@ struct Index {
 }
 
 @Component
-struct ItemButton {
-  @Prop text: string = ''
-  @Prop desc: string = ''
+struct FeatureCard {
   @Prop icon: Resource = $r('app.media.vector')
-  event: (event?: ClickEvent) => void = () => {
-  }
+  @Prop title: string = ''
+  @Prop desc: string = ''
+  @Prop bgColor: string = '#DBEAFE'
+  @Prop iconColor: string = '#2563EB'
+  action: () => void = () => {}
 
   build() {
-    Column({ space: '16vp' }) {
+    Row({ space: '14vp' }) {
       Stack() {
         Column()
-          .width('120vp')
-          .height('120vp')
-          .borderRadius('60vp')
-          .backgroundColor('#33FFFFFF')
-
+          .width('48vp').height('48vp')
+          .backgroundColor(this.bgColor)
+          .borderRadius('12vp')
         Image(this.icon)
-          .width('96vp')
-          .height('96vp')
+          .width('24vp').height('24vp')
+          .fillColor(this.iconColor)
       }
 
-      Column({ space: '6vp' }) {
-        Text(this.text)
+      Column({ space: '4vp' }) {
+        Text(this.title)
+          .fontSize('16fp')
+          .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.text_on_light'))
-          .fontSize($r('app.float.index_text_size'))
-          .fontWeight(FontWeight.Medium)
         Text(this.desc)
-          .fontSize('13fp')
+          .fontSize('12fp')
           .fontColor($r('app.color.text_secondary'))
       }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Text('›')
+        .fontSize('22fp')
+        .fontColor('#D1D5DB')
     }
     .width('100%')
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .padding('24vp')
+    .padding('16vp')
     .backgroundColor($r('app.color.card_background'))
-    .borderRadius($r('app.float.index_button_radius'))
-    .border({ width: '1vp', color: $r('app.color.card_border') })
-    .shadow(CardShadow)
-    .onClick(() => this.event())
+    .borderRadius('16vp')
+    .onClick(() => this.action())
   }
 }

@@ -4,13 +4,13 @@
       {
         "name": "default",
         "material": {
-          "certpath": "C:/Users/zhang/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.cer",
+          "certpath": "C:/Users/86195/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B7B1A162E7253377EF8CC2B7C2AC5E9AEA04C2A82BE649DCC1FDA98C4E801416C4BA3B85C2F4289",
-          "profile": "C:/Users/zhang/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p7b",
+          "keyPassword": "0000001BF489C265AA148A896AEFD8676EC4D361A3D5DD50894B88E42CE6C1C1C2727799F6368050506747",
+          "profile": "C:/Users/86195/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:/Users/zhang/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p12",
-          "storePassword": "0000001B1CB74284BC92D98157EB432274E9F8399D06A20D3D6B119FBA305A8CD0FCFE2CEF644CAF9FF8E7"
+          "storeFile": "C:/Users/86195/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p12",
+          "storePassword": "0000001B62FE45A2D6098DA5DABF3FB2A0B418A6081E5AB42AB3F8DD76C305391CA1F4DE28FB55D89228F1"
         }
       }
     ],

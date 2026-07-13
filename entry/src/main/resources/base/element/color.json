@@ -2,55 +2,55 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#FFFFFF"
+      "value": "#2563EB"
     },
     {
       "name": "window_background",
-      "value": "#FFEAB76D"
+      "value": "#F3F4F6"
     },
     {
       "name": "button_background",
-      "value": "#ec761d"
+      "value": "#2563EB"
     },
     {
       "name": "button_select_background",
-      "value": "#D9D9D9"
+      "value": "#E5E7EB"
     },
     {
       "name": "edit_text_background",
-      "value": "#FFABABAE"
+      "value": "#F3F4F6"
     },
     {
       "name": "track_background",
-      "value": "#ec761d"
+      "value": "#E5E7EB"
     },
     {
       "name": "slider_selected",
-      "value": "#D9D9D9"
+      "value": "#2563EB"
     },
     {
       "name": "track_select_background",
-      "value": "#ec761d"
+      "value": "#2563EB"
     },
     {
       "name": "card_background",
-      "value": "#FFFDF8F3"
+      "value": "#FFFFFF"
     },
     {
       "name": "card_border",
-      "value": "#33EC761D"
+      "value": "#F3F4F6"
     },
     {
       "name": "surface_dark",
-      "value": "#FF2A2118"
+      "value": "#111827"
     },
     {
       "name": "accent_dark",
-      "value": "#FFC45A12"
+      "value": "#2563EB"
     },
     {
       "name": "chip_background",
-      "value": "#33EC761D"
+      "value": "#DBEAFE"
     }
   ]
 }

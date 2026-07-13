@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>智检哨兵 - Smart Car</title>
+<style>
+:root {
+  --bg: #F3F4F6;
+  --card: #FFFFFF;
+  --primary: #2563EB;
+  --primary-light: #DBEAFE;
+  --danger: #EF4444;
+  --danger-light: #FEF2F2;
+  --success: #22C55E;
+  --text: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --input-bg: #F3F4F6;
+  --surface-dark: #111827;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #E5E7EB;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+
+/* ── Phone frame ── */
+.phone {
+  width: 390px; max-width: 100vw;
+  height: 844px; max-height: 100dvh;
+  background: var(--bg);
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  border-radius: 24px;
+}
+@media (max-width: 400px) { .phone { border-radius:0; width:100%; height:100dvh; } }
+
+/* ── Page stack ── */
+.page-stack { flex:1; position:relative; overflow:hidden; }
+.page {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  background: var(--bg); display:flex; flex-direction:column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.page.active { transform: translateX(0); }
+
+/* ── Header ── */
+.header {
+  height: 56px; display:flex; align-items:center;
+  padding: 0 14px; flex-shrink:0;
+}
+.header h1 { flex:1; text-align:center; font-size:18px; font-weight:700; color:var(--text); }
+.back-btn {
+  width:36px; height:36px; border-radius:50%; border:none;
+  background:transparent; font-size:28px; color:var(--text-secondary);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.back-btn:active { background: rgba(0,0,0,0.05); }
+.header .spacer { width:36px; flex-shrink:0; }
+
+/* ── Scroll ── */
+.scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.scroll-inner { padding:0 16px 32px; display:flex; flex-direction:column; gap:16px; }
+
+/* ── Card ── */
+.card { background:var(--card); border-radius:var(--radius-lg); padding:18px; }
+
+/* ── Buttons ── */
+.btn {
+  display:flex; align-items:center; justify-content:center;
+  border:none; cursor:pointer; font-weight:700; border-radius:var(--radius);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:active { opacity:0.8; transform:scale(0.97); }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-secondary { background:var(--input-bg); color:var(--text); }
+.btn-danger { background:var(--danger-light); color:var(--danger); }
+.btn-outline { background:var(--primary-light); color:var(--primary); }
+
+/* ── Form ── */
+.fg-label { display:block; font-size:13px; font-weight:500; color:var(--text-secondary); margin-bottom:8px; }
+.input {
+  width:100%; height:48px; font-size:16px; border:none; outline:none;
+  background:var(--input-bg); border-radius:var(--radius); padding:0 14px; color:var(--text);
+}
+.input:focus { box-shadow: 0 0 0 2px var(--primary); }
+
+/* ── Port row ── */
+.port-row {
+  display:flex; align-items:center; gap:10px;
+  padding:12px; background:var(--input-bg); border-radius:var(--radius);
+}
+.port-info { flex:1; display:flex; flex-direction:column; gap:2px; }
+.port-info .l { font-size:15px; font-weight:500; color:var(--text); }
+.port-info .d { font-size:11px; color:var(--text-secondary); }
+.port-input {
+  width:72px; height:32px; font-size:13px; border:none; border-radius:var(--radius-sm);
+  padding:0 8px; text-align:center; background:var(--card); outline:none;
+}
+
+/* ── Toggle ── */
+.toggle { position:relative; width:44px; height:26px; flex-shrink:0; cursor:pointer; }
+.toggle input { display:none; }
+.toggle .track { width:100%; height:100%; border-radius:13px; background:#D1D5DB; transition:background 0.2s; }
+.toggle.on .track { background:var(--primary); }
+.toggle .thumb {
+  position:absolute; top:3px; left:3px; width:20px; height:20px;
+  border-radius:50%; background:#fff; transition:left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on .thumb { left:21px; }
+
+/* ── Status ── */
+.status-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.status-dot.green { background:var(--success); }
+
+/* ── Feature card ── */
+.feat-card {
+  display:flex; align-items:center; gap:14px; padding:16px;
+  background:var(--card); border-radius:var(--radius-lg); cursor:pointer;
+  transition: transform 0.1s;
+}
+.feat-card:active { transform:scale(0.98); }
+.feat-icon {
+  width:48px; height:48px; border-radius:var(--radius);
+  display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;
+}
+.feat-body { flex:1; display:flex; flex-direction:column; gap:4px; }
+.feat-body .t { font-size:16px; font-weight:700; color:var(--text); }
+.feat-body .s { font-size:12px; color:var(--text-secondary); }
+.feat-arrow { font-size:22px; color:#D1D5DB; }
+
+/* ── Pill group ── */
+.pill-group {
+  display:flex; padding:3px; background:var(--input-bg); border-radius:var(--radius); gap:2px;
+}
+.pill {
+  flex:1; padding:10px 20px; text-align:center; font-size:13px; font-weight:500;
+  border-radius:10px; cursor:pointer; border:none; background:transparent;
+  color:var(--text-secondary); transition:all 0.2s;
+}
+.pill.active { background:var(--card); color:var(--primary); box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+
+/* ── Direction grid ── */
+.dir-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr;
+  gap:10px; width:100%; aspect-ratio:1; max-height:320px;
+}
+.dir-btn {
+  width:100%; height:100%; border-radius:14px; border:none;
+  background:var(--primary); color:#fff; font-size:28px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition: transform 0.05s;
+}
+.dir-btn:active { transform:scale(0.9); }
+.dir-btn.stop { background:var(--danger); font-size:24px; }
+.dir-btn.empty { background:transparent; pointer-events:none; }
+
+/* ── Joystick ── */
+.joy-wrap {
+  position:relative; touch-action:none;
+  display:flex; align-items:center; justify-content:center;
+}
+.joy-wrap canvas { border-radius:50%; cursor:pointer; }
+
+/* ── Wheel sliders ── */
+.wheel-2x2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.wheel-box {
+  padding:14px; background:var(--card); border-radius:var(--radius-lg);
+  display:flex; flex-direction:column; gap:10px;
+}
+.wheel-box.fl { border-left:4px solid var(--primary); }
+.wheel-box.fr { border-right:4px solid var(--primary); }
+.wheel-box.rl { border-left:4px solid #9CA3AF; }
+.wheel-box.rr { border-right:4px solid #9CA3AF; }
+.wheel-hdr { display:flex; justify-content:space-between; }
+.wheel-hdr .wl { font-size:11px; font-weight:700; color:#9CA3AF; }
+.wheel-hdr .wv { font-size:14px; font-weight:700; color:var(--primary); }
+.wheel-box.rl .wv, .wheel-box.rr .wv { color:#9CA3AF; }
+
+input[type=range] {
+  -webkit-appearance:none; width:100%; height:6px;
+  border-radius:3px; background:#E5E7EB; outline:none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:24px; height:24px; border-radius:50%;
+  background:var(--primary); cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.15);
+}
+
+/* ── Video ── */
+.video-box {
+  width:100%; height:200px; border-radius:var(--radius-lg);
+  background:var(--surface-dark); position:relative; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+}
+.video-box .v-icon { font-size:40px; }
+.video-box .v-hint { font-size:13px; color:#fff; }
+.video-box .v-addr { font-size:11px; color:var(--text-muted); }
+.rec-tag {
+  position:absolute; top:8px; left:8px; display:flex; align-items:center; gap:4px;
+  padding:3px 8px; background:rgba(0,0,0,0.6); border-radius:6px;
+}
+.rec-tag .dot { width:8px; height:8px; border-radius:50%; background:var(--danger); animation:pulse 1s infinite; }
+.rec-tag span { font-size:10px; color:var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.video-disabled {
+  width:100%; height:200px; border-radius:var(--radius-lg);
+  background:var(--card); border:1px dashed var(--input-bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+}
+.video-disabled .v-icon { font-size:40px; }
+.video-disabled .v-hint { font-size:15px; color:var(--text); }
+.video-disabled .v-sub { font-size:12px; color:var(--text-muted); }
+
+/* ── Warning ── */
+.warning {
+  display:flex; gap:8px; padding:12px; background:var(--danger-light);
+  border-radius:var(--radius); font-size:12px; color:var(--danger);
+}
+
+/* ── Toast ── */
+.toast {
+  position:fixed; top:60px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.82); color:#fff; padding:10px 22px;
+  border-radius:20px; font-size:13px; z-index:999; pointer-events:none;
+  opacity:0; transition:opacity 0.25s;
+}
+.toast.show { opacity:1; }
+
+/* ── Patrol ── */
+.event-item {
+  display:flex; gap:12px; padding:12px; background:var(--card);
+  border-radius:14px; cursor:pointer; transition:transform 0.1s;
+}
+.event-item:active { transform:scale(0.98); }
+.event-thumb {
+  width:64px; height:64px; border-radius:var(--radius); background:#F3F4F6;
+  display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;
+}
+.event-body { flex:1; display:flex; flex-direction:column; gap:6px; }
+.event-row1 { display:flex; justify-content:space-between; width:100%; }
+.event-name { font-size:14px; font-weight:700; color:var(--text); }
+.event-time { font-size:10px; color:var(--text-secondary); }
+.event-bar-wrap { display:flex; gap:8px; align-items:center; width:50%; }
+.event-bar-bg { flex:1; height:4px; background:#F3F4F6; border-radius:2px; overflow:hidden; }
+.event-bar-fill { height:100%; border-radius:2px; }
+.event-pct { font-size:11px; font-weight:700; }
+
+.empty-state {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:200px; gap:10px;
+}
+.empty-state .icon { font-size:40px; }
+.empty-state .txt { font-size:14px; color:var(--text-muted); }
+
+/* ── Modal ── */
+.modal-overlay {
+  position:absolute; inset:0; z-index:100; display:flex; flex-direction:column;
+}
+.modal-backdrop { flex:1; background:rgba(0,0,0,0.6); }
+.modal-sheet {
+  background:#fff; border-radius:24px 24px 0 0; padding:18px;
+  display:flex; flex-direction:column; gap:14px; max-height:70%; overflow-y:auto;
+}
+.modal-sheet h3 { font-size:16px; font-weight:700; color:var(--text); }
+.modal-img {
+  width:100%; aspect-ratio:1; object-fit:cover; border-radius:var(--radius-lg);
+  background:#F3F4F6;
+}
+.modal-stats { display:flex; gap:10px; }
+.modal-stat {
+  flex:1; padding:12px; background:#F3F4F6; border-radius:var(--radius);
+  display:flex; flex-direction:column; gap:4px;
+}
+.modal-stat .sl { font-size:10px; color:var(--text-muted); }
+.modal-stat .sv { font-size:15px; font-weight:700; }
+.modal-time-row { padding:12px; background:#F3F4F6; border-radius:var(--radius); }
+.modal-time-row .tl { font-size:10px; color:var(--text-muted); }
+.modal-time-row .tv { font-size:14px; font-weight:500; color:var(--text); }
+
+/* ── Scrollbar hide ── */
+.scroll::-webkit-scrollbar { width:0; }
+
+/* ── Panoramic (fullscreen video) ── */
+.pano-page { background:#000 !important; }
+.pano-video {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  position:relative; overflow:hidden;
+}
+.pano-video .pano-placeholder {
+  width:100%; height:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px;
+}
+.pano-video .pano-cam { font-size:64px; }
+.pano-video .pano-hint { font-size:15px; color:#9CA3AF; }
+.pano-video .pano-addr { font-size:13px; color:#6B7280; }
+.pano-video .pano-overlay {
+  position:absolute; top:0; left:0; right:0; padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+}
+.pano-video .pano-back {
+  width:36px; height:36px; border-radius:50%; border:none;
+  background:rgba(255,255,255,0.15); font-size:28px; color:#fff;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.pano-video .pano-back:active { background:rgba(255,255,255,0.3); }
+.pano-video .pano-label {
+  font-size:16px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.5);
+}
+.pano-video .pano-spacer { width:36px; }
+.pano-video .pano-fps {
+  position:absolute; bottom:16px; right:16px;
+  background:rgba(0,0,0,0.5); color:#fff; font-size:11px;
+  padding:4px 10px; border-radius:10px;
+}
+.pano-video .pano-grid-overlay {
+  position:absolute; inset:0; pointer-events:none; opacity:0.08;
+  background-image:
+    linear-gradient(rgba(255,255,255,.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+/* Simulated scan line */
+.pano-video .scan-line {
+  position:absolute; left:0; right:0; height:2px;
+  background:rgba(37,99,235,0.5);
+  box-shadow: 0 0 20px rgba(37,99,235,0.4);
+  animation: scanMove 3s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes scanMove {
+  0% { top:0%; } 50% { top:100%; } 100% { top:0%; }
+}
+</style>
+</head>
+<body>
+
+<div class="phone" id="app">
+  <div class="toast" id="toast"></div>
+
+  <div class="page-stack">
+
+    <!-- ═══════════ PAGE 1: 连接设置 ═══════════ -->
+    <div class="page active" id="pg-network">
+      <div class="header">
+        <div class="spacer"></div>
+        <h1>连接小车</h1>
+        <div class="spacer"></div>
+      </div>
+      <div class="scroll">
+        <div class="scroll-inner">
+          <div class="card" style="display:flex;flex-direction:column;gap:20px;">
+            <div>
+              <label class="fg-label">小车 IP 地址</label>
+              <input class="input" id="inp-ip" placeholder="请输入 IP 地址" value="10.147.13.194">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <!-- TCP -->
+              <div class="port-row">
+                <div class="port-info">
+                  <span class="l">控车 TCP</span>
+                  <span class="d">端口: <span id="lbl-tcp">6000</span></span>
+                </div>
+                <input class="port-input" id="inp-tcp" value="6000" oninput="id('lbl-tcp').textContent=this.value">
+                <label class="toggle on" id="tog-tcp" onclick="this.classList.toggle('on')"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+              </div>
+              <!-- Video -->
+              <div class="port-row">
+                <div class="port-info">
+                  <span class="l">视频</span>
+                  <span class="d">端口: <span id="lbl-video">6500</span></span>
+                </div>
+                <input class="port-input" id="inp-video" value="6500" oninput="id('lbl-video').textContent=this.value">
+                <label class="toggle" id="tog-video" onclick="this.classList.toggle('on')"><input type="checkbox"><span class="track"></span><span class="thumb"></span></label>
+              </div>
+              <!-- Patrol -->
+              <div class="port-row">
+                <div class="port-info">
+                  <span class="l">巡检 HTTP</span>
+                  <span class="d">端口: <span id="lbl-patrol">6700</span></span>
+                </div>
+                <input class="port-input" id="inp-patrol" value="6700" oninput="id('lbl-patrol').textContent=this.value">
+                <label class="toggle on" id="tog-patrol" onclick="this.classList.toggle('on')"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+              </div>
+            </div>
+            <div class="warning">
+              <span>⚠</span>
+              <span>注意：摄像头端口与其它设备可能存在冲突</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="height:52px;font-size:17px;border-radius:16px;" id="btn-connect" onclick="doConnect()">连接小车</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE 2: 主页 ═══════════ -->
+    <div class="page" id="pg-home">
+      <div class="header">
+        <div class="spacer"></div>
+        <h1>智检哨兵</h1>
+        <div class="spacer"></div>
+      </div>
+      <div class="scroll">
+        <div class="scroll-inner">
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="status-dot green"></span>
+                <span style="font-size:18px;font-weight:700;color:var(--text);">已连接</span>
+              </div>
+              <span style="font-size:13px;color:var(--text-secondary);" id="home-ip">10.147.13.194</span>
+            </div>
+            <button class="btn btn-danger" style="width:100%;height:44px;font-size:14px;" onclick="doDisconnect()">断开连接</button>
+          </div>
+
+          <div class="feat-card" onclick="navTo('pg-mecanum')">
+            <div class="feat-icon" style="background:#DBEAFE;">🛞</div>
+            <div class="feat-body"><span class="t">麦科朗姆</span><span class="s">控制四个麦克纳姆轮</span></div>
+            <span class="feat-arrow">›</span>
+          </div>
+          <div class="feat-card" onclick="navTo('pg-remote')">
+            <div class="feat-icon" style="background:#E0E7FF;">🎮</div>
+            <div class="feat-body"><span class="t">单独控制</span><span class="s">遥控小车运动</span></div>
+            <span class="feat-arrow">›</span>
+          </div>
+          <div class="feat-card" onclick="navTo('pg-patrol')">
+            <div class="feat-icon" style="background:#D1FAE5;">🔍</div>
+            <div class="feat-body"><span class="t">智能巡检</span><span class="s">AI 智能巡检检测</span></div>
+            <span class="feat-arrow">›</span>
+          </div>
+          <div class="feat-card" onclick="navTo('pg-panoramic')">
+            <div class="feat-icon" style="background:#FEE2E2;">📹</div>
+            <div class="feat-body"><span class="t">全景视角</span><span class="s">全屏查看摄像机实时画面</span></div>
+            <span class="feat-arrow">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE 3: 单独控制 ═══════════ -->
+    <div class="page" id="pg-remote">
+      <div class="header">
+        <button class="back-btn" onclick="navTo('pg-home')">‹</button>
+        <h1>单独控制</h1>
+        <div class="spacer"></div>
+      </div>
+      <div class="scroll">
+        <div class="scroll-inner">
+          <!-- Video -->
+          <div class="video-box" id="video-live">
+            <span class="v-icon">📷</span>
+            <span class="v-hint">视频预览区域</span>
+            <span class="v-addr" id="video-url">10.147.13.194:6500</span>
+            <div class="rec-tag" id="rec-badge" style="display:none;"><span class="dot"></span><span>REC</span></div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;border-radius:8px;" onclick="toast('刷新中…')">刷新</button>
+            <button class="btn btn-primary" style="flex:1;height:36px;font-size:13px;border-radius:8px;" id="btn-shot" onclick="toast('拍照指令已发送')">拍摄</button>
+            <button class="btn btn-primary" style="flex:1;height:36px;font-size:13px;border-radius:8px;" id="btn-rec" onclick="toggleRec()">录制</button>
+          </div>
+
+          <!-- Mode switch -->
+          <div class="pill-group">
+            <button class="pill active" id="pill-btn" onclick="setMode('btn')">按钮模式</button>
+            <button class="pill" id="pill-rock" onclick="setMode('rock')">摇杆模式</button>
+          </div>
+
+          <!-- Button control -->
+          <div id="area-btn">
+            <div class="dir-grid">
+              <div class="dir-btn empty"></div>
+              <button class="dir-btn" data-dir="fwd">▲</button>
+              <div class="dir-btn empty"></div>
+              <button class="dir-btn" data-dir="left">◀</button>
+              <button class="dir-btn stop" data-dir="stop">■</button>
+              <button class="dir-btn" data-dir="right">▶</button>
+              <button class="dir-btn" data-dir="lrot">↺</button>
+              <button class="dir-btn" data-dir="back">▼</button>
+              <button class="dir-btn" data-dir="rrot">↻</button>
+            </div>
+          </div>
+
+          <!-- Rocker control -->
+          <div id="area-rock" style="display:none;">
+            <div class="joy-wrap" style="width:200px;height:200px;margin:0 auto;">
+              <canvas id="joy1" width="400" height="400" style="width:200px;height:200px;"></canvas>
+            </div>
+            <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:12px;">滑动摇杆控制运动</p>
+          </div>
+
+          <!-- Tracking -->
+          <div class="card" style="display:flex;align-items:center;">
+            <span style="flex:1;font-size:15px;font-weight:500;color:var(--text);">自动循迹</span>
+            <label class="toggle" id="tog-track" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'自动循迹已开启':'自动循迹已关闭')"><input type="checkbox"><span class="track"></span><span class="thumb"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE 4: 麦科朗姆 ═══════════ -->
+    <div class="page" id="pg-mecanum">
+      <div class="header">
+        <button class="back-btn" onclick="navTo('pg-home')">‹</button>
+        <h1>麦科朗姆</h1>
+        <div class="spacer"></div>
+      </div>
+      <div class="scroll">
+        <div class="scroll-inner">
+          <div class="wheel-2x2">
+            <div class="wheel-box fl">
+              <div class="wheel-hdr"><span class="wl">FL 左前</span><span class="wv" id="wv-fl">0</span></div>
+              <input type="range" min="-100" max="100" value="0" id="ws-fl" oninput="wheelChange()">
+            </div>
+            <div class="wheel-box fr">
+              <div class="wheel-hdr"><span class="wl">FR 右前</span><span class="wv" id="wv-fr">0</span></div>
+              <input type="range" min="-100" max="100" value="0" id="ws-fr" oninput="wheelChange()">
+            </div>
+            <div class="wheel-box rl">
+              <div class="wheel-hdr"><span class="wl">RL 左后</span><span class="wv" id="wv-rl">0</span></div>
+              <input type="range" min="-100" max="100" value="0" id="ws-rl" oninput="wheelChange()">
+            </div>
+            <div class="wheel-box rr">
+              <div class="wheel-hdr"><span class="wl">RR 右后</span><span class="wv" id="wv-rr">0</span></div>
+              <input type="range" min="-100" max="100" value="0" id="ws-rr" oninput="wheelChange()">
+            </div>
+          </div>
+
+          <div class="joy-wrap" style="width:180px;height:180px;margin:0 auto;">
+            <canvas id="joy2" width="360" height="360" style="width:180px;height:180px;"></canvas>
+          </div>
+
+          <div style="display:flex;gap:12px;">
+            <button class="btn btn-primary" style="flex:1;height:48px;" onclick="wheelSend()">更新速度</button>
+            <button class="btn btn-secondary" style="flex:1;height:48px;" onclick="wheelReset()">全部归零</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE 5: 智能巡检 ═══════════ -->
+    <div class="page" id="pg-patrol">
+      <div class="header">
+        <button class="back-btn" onclick="navTo('pg-home')">‹</button>
+        <h1>智能巡检</h1>
+        <div class="spacer"></div>
+      </div>
+      <div class="scroll">
+        <div class="scroll-inner">
+          <div class="card" style="display:flex;align-items:center;padding:14px 18px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="status-dot green"></span>
+                <span style="font-size:14px;font-weight:700;color:var(--text);" id="pt-host">10.147.13.194:6700</span>
+              </div>
+              <span style="font-size:11px;color:var(--text-secondary);">巡检服务运行中</span>
+            </div>
+            <button class="btn btn-outline" style="height:32px;font-size:12px;border-radius:8px;padding:0 12px;" onclick="patrolRefresh()">刷新</button>
+          </div>
+
+          <div style="display:flex;align-items:center;padding:0 4px;">
+            <span style="font-size:12px;font-weight:700;color:var(--text-secondary);">YOLO 检测事件</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:11px;color:var(--text-muted);margin-right:6px;">自动刷新</span>
+            <label class="toggle on" id="tog-auto" onclick="this.classList.toggle('on');onAutoToggle()"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+          </div>
+
+          <div id="pt-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- Modal -->
+      <div class="modal-overlay" id="pt-modal" style="display:none;">
+        <div class="modal-backdrop" onclick="closePtModal()"></div>
+        <div class="modal-sheet">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>检测详情</h3>
+            <button style="background:none;border:none;font-size:20px;color:var(--text-secondary);cursor:pointer;" onclick="closePtModal()">✕</button>
+          </div>
+          <img class="modal-img" id="md-img" src="" alt="snapshot" onerror="this.style.display='none'">
+          <div class="modal-stats">
+            <div class="modal-stat"><span class="sl">类别</span><span class="sv" style="color:var(--primary);" id="md-cls"></span></div>
+            <div class="modal-stat"><span class="sl">置信度</span><span class="sv" style="color:#22C55E;" id="md-cf"></span></div>
+          </div>
+          <div class="modal-time-row"><span class="tl">检测时间</span><div class="tv" id="md-time"></div></div>
+          <button class="btn btn-primary" style="height:48px;" onclick="closePtModal()">返回列表</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE 6: 全景视角 ═══════════ -->
+    <div class="page pano-page" id="pg-panoramic">
+      <div class="pano-video">
+        <!-- 模拟实时画面 -->
+        <div class="pano-placeholder" id="pano-placeholder">
+          <span class="pano-cam">🎥</span>
+          <span class="pano-hint" id="pano-hint">实时画面加载中…</span>
+          <span class="pano-addr" id="pano-addr">10.147.13.194:6500</span>
+        </div>
+
+        <!-- 扫描线效果 -->
+        <div class="scan-line"></div>
+
+        <!-- 网格叠加 -->
+        <div class="pano-grid-overlay"></div>
+
+        <!-- 顶部悬浮栏 -->
+        <div class="pano-overlay">
+          <button class="pano-back" onclick="leavePanoramic()">‹</button>
+          <span class="pano-label">全景视角</span>
+          <div class="pano-spacer"></div>
+        </div>
+
+        <!-- FPS 指示 -->
+        <div class="pano-fps" id="pano-fps">30 FPS</div>
+      </div>
+    </div>
+
+  </div><!-- /page-stack -->
+</div>
+
+<script>
+// ═══════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════
+const $ = (s) => document.getElementById(s);
+const id = (s) => document.getElementById(s);  // inline-friendly alias
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ═══════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════
+const pageStack = [];
+function navTo(pageId) {
+  const old = document.querySelector('.page.active');
+  const nu = $(pageId);
+  if (!nu || old === nu) return;
+  old.classList.remove('active');
+  nu.classList.add('active');
+  pageStack.push(old.id);
+  // Init hooks
+  if (pageId === 'pg-remote') { initJoystick('joy1', 200); $('video-url').textContent = readCfg().ip + ':' + readCfg().videoPort; }
+  if (pageId === 'pg-mecanum') initJoystick('joy2', 180);
+  if (pageId === 'pg-patrol') initPatrol();
+  if (pageId === 'pg-panoramic') initPanoramic();
+  if (pageId === 'pg-home') $('home-ip').textContent = readCfg().ip;
+}
+
+function readCfg() {
+  return {
+    ip: $('inp-ip').value,
+    tcpPort: $('inp-tcp').value,
+    videoPort: $('inp-video').value,
+    patrolPort: $('inp-patrol').value,
+    tcpOn: $('tog-tcp').classList.contains('on'),
+    videoOn: $('tog-video').classList.contains('on'),
+    patrolOn: $('tog-patrol').classList.contains('on'),
+  };
+}
+
+function doConnect() {
+  const c = readCfg();
+  if (!c.ip) { toast('请输入 IP 地址'); return; }
+  if (!c.tcpOn && !c.videoOn && !c.patrolOn) { toast('请至少勾选一个端口'); return; }
+  if (c.videoOn && c.patrolOn) toast('视频与巡检建议不要同时勾选');
+  const btn = $('btn-connect');
+  btn.textContent = '连接中…'; btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = '连接小车'; btn.disabled = false;
+    const parts = [];
+    if (c.tcpOn) parts.push('控车:' + c.tcpPort);
+    if (c.videoOn) parts.push('视频:' + c.videoPort);
+    if (c.patrolOn) parts.push('巡检:' + c.patrolPort);
+    toast('已连接 ' + parts.join(' '));
+    navTo('pg-home');
+  }, 1000);
+}
+
+function doDisconnect() {
+  toast('已断开连接');
+  // Go back to network page
+  document.querySelector('.page.active').classList.remove('active');
+  $('pg-network').classList.add('active');
+  pageStack.length = 0;
+}
+
+// ═══════════════════════════════════
+//  DIRECTION BUTTONS
+// ═══════════════════════════════════
+const dirNames = { fwd:'前进', back:'后退', left:'左转', right:'右转', lrot:'左旋', rrot:'右旋', stop:'停止' };
+
+document.querySelectorAll('.dir-btn[data-dir]').forEach(btn => {
+  const dir = btn.dataset.dir;
+
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    btn.style.transform = 'scale(0.9)';
+    if (dir !== 'stop') toast(dirNames[dir]);
+  });
+
+  btn.addEventListener('pointerup', (e) => {
+    e.preventDefault();
+    btn.style.transform = '';
+  });
+  btn.addEventListener('pointerleave', () => { btn.style.transform = ''; });
+  btn.addEventListener('pointercancel', () => { btn.style.transform = ''; });
+
+  // For the stop button: auto-release
+  if (dir === 'stop') {
+    btn.addEventListener('pointerdown', () => {
+      setTimeout(() => { btn.style.transform = ''; }, 150);
+    });
+  }
+});
+
+// ═══════════════════════════════════
+//  MODE SWITCH (button / rocker)
+// ═══════════════════════════════════
+function setMode(mode) {
+  $('pill-btn').classList.toggle('active', mode === 'btn');
+  $('pill-rock').classList.toggle('active', mode === 'rock');
+  $('area-btn').style.display = mode === 'btn' ? 'block' : 'none';
+  $('area-rock').style.display = mode === 'rock' ? 'block' : 'none';
+  if (mode === 'rock') setTimeout(() => drawJoy('joy1', 200, 0.5, 0.5), 50);
+}
+
+// ═══════════════════════════════════
+//  RECORDING
+// ═══════════════════════════════════
+let recOn = false;
+function toggleRec() {
+  recOn = !recOn;
+  $('rec-badge').style.display = recOn ? 'flex' : 'none';
+  $('btn-rec').textContent = recOn ? '结束' : '录制';
+  toast(recOn ? '开始录制' : '停止录制');
+}
+
+// ═══════════════════════════════════
+//  JOYSTICK  (Canvas-based)
+// ═══════════════════════════════════
+const joyState = {};
+
+function drawJoy(canvasId, size, tx, ty) {
+  const cv = $(canvasId); if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const w = cv.width, h = cv.height;
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 4;
+  ctx.clearRect(0, 0, w, h);
+  // Base
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#E5E7EB'; ctx.fill();
+  // Knob
+  const kr = r * 0.35;
+  const kx = cx + (tx - 0.5) * 2 * (r - kr);
+  const ky = cy + (ty - 0.5) * 2 * (r - kr);
+  ctx.beginPath(); ctx.arc(kx, ky, kr, 0, Math.PI * 2);
+  ctx.fillStyle = '#2563EB'; ctx.fill();
+}
+
+function initJoystick(canvasId, displaySize) {
+  if (joyState[canvasId]) return; // already bound
+  joyState[canvasId] = true;
+  const cv = $(canvasId); if (!cv) return;
+
+  let active = false;
+  let tx = 0.5, ty = 0.5;
+  drawJoy(canvasId, displaySize, tx, ty);
+
+  const scaleX = cv.width / displaySize;
+  const scaleY = cv.height / displaySize;
+
+  function getXY(e) {
+    const rect = cv.getBoundingClientRect();
+    let cx, cy;
+    if (e.touches) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+    else { cx = e.clientX; cy = e.clientY; }
+    return {
+      x: Math.max(0, Math.min(1, ((cx - rect.left) / rect.width))),
+      y: Math.max(0, Math.min(1, ((cy - rect.top) / rect.height)))
+    };
+  }
+
+  cv.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); active = true;
+    const p = getXY(e); tx = p.x; ty = p.y;
+    drawJoy(canvasId, displaySize, tx, ty);
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!active) return;
+    const p = getXY(e); tx = p.x; ty = p.y;
+    drawJoy(canvasId, displaySize, tx, ty);
+  });
+  window.addEventListener('pointerup', () => {
+    if (!active) return;
+    active = false; tx = 0.5; ty = 0.5;
+    drawJoy(canvasId, displaySize, tx, ty);
+  });
+  cv.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
+}
+
+// ═══════════════════════════════════
+//  MECANUM WHEELS
+// ═══════════════════════════════════
+function wheelChange() {
+  ['fl','fr','rl','rr'].forEach(id => {
+    $('wv-' + id).textContent = $('ws-' + id).value;
+  });
+}
+function wheelSend() {
+  const v = ['fl','fr','rl','rr'].map(id => $('ws-' + id).value).join(', ');
+  toast('速度更新: ' + v);
+}
+function wheelReset() {
+  ['fl','fr','rl','rr'].forEach(id => {
+    $('ws-' + id).value = 0;
+    $('wv-' + id).textContent = '0';
+  });
+  toast('已全部归零');
+}
+
+// ═══════════════════════════════════
+//  PATROL
+// ═══════════════════════════════════
+let patrolTimer = null;
+let mockEvents = [];
+
+function genEvents() {
+  const cls = [
+    { n:'person', e:'🧑' }, { n:'bottle', e:'🍾' },
+    { n:'backpack', e:'🎒' }, { n:'chair', e:'🪑' },
+    { n:'car', e:'🚗' }, { n:'dog', e:'🐕' },
+  ];
+  mockEvents = [];
+  for (let i = 0; i < 8; i++) {
+    const c = cls[Math.floor(Math.random() * cls.length)];
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - Math.floor(Math.random() * 60));
+    mockEvents.push({
+      id: 'e' + i + '_' + Date.now(),
+      name: c.n, icon: c.e,
+      conf: 0.65 + Math.random() * 0.34,
+      time: d.toISOString().replace('T',' ').substring(0, 19)
+    });
+  }
+  mockEvents.sort((a, b) => b.time.localeCompare(a.time));
+}
+
+function renderEvents() {
+  const ct = $('pt-list');
+  if (mockEvents.length === 0) {
+    ct.innerHTML = '<div class="empty-state"><span class="icon">📭</span><span class="txt">暂无检测事件</span></div>';
+    return;
+  }
+  ct.innerHTML = mockEvents.map(e => {
+    const pct = (e.conf * 100).toFixed(1);
+    let bc, pc;
+    if (e.conf > 0.9) { bc = '#22C55E'; pc = '#16A34A'; }
+    else if (e.conf > 0.7) { bc = '#2563EB'; pc = '#2563EB'; }
+    else { bc = '#F59E0B'; pc = '#D97706'; }
+    return `<div class="event-item" onclick="openPtModal('${e.id}')">
+      <div class="event-thumb">${e.icon}</div>
+      <div class="event-body">
+        <div class="event-row1"><span class="event-name">${e.name}</span><span class="event-time">${e.time}</span></div>
+        <div class="event-bar-wrap"><div class="event-bar-bg"><div class="event-bar-fill" style="width:${pct}%;background:${bc};"></div></div></div>
+        <span class="event-pct" style="color:${pc};">${pct}%</span>
+      </div></div>`;
+  }).join('');
+}
+
+function initPatrol() {
+  $('pt-host').textContent = readCfg().ip + ':' + readCfg().patrolPort;
+  if (mockEvents.length === 0) genEvents();
+  renderEvents();
+  startAuto();
+}
+function startAuto() {
+  stopAuto();
+  if (!$('tog-auto').classList.contains('on')) return;
+  patrolTimer = setInterval(() => { genEvents(); renderEvents(); }, 4000);
+}
+function stopAuto() { if (patrolTimer) { clearInterval(patrolTimer); patrolTimer = null; } }
+function onAutoToggle() { if ($('tog-auto').classList.contains('on')) startAuto(); else stopAuto(); }
+function patrolRefresh() { genEvents(); renderEvents(); toast('已刷新'); }
+
+function openPtModal(id) {
+  const e = mockEvents.find(ev => ev.id === id); if (!e) return;
+  $('md-cls').textContent = e.name;
+  $('md-cf').textContent = (e.conf * 100).toFixed(1) + '%';
+  $('md-time').textContent = e.time;
+  $('md-img').src = '';
+  $('pt-modal').style.display = 'flex';
+}
+function closePtModal() { $('pt-modal').style.display = 'none'; }
+
+// ═══════════════════════════════════
+//  PANORAMIC (fullscreen video)
+// ═══════════════════════════════════
+let panoSimTimer = null;
+
+function initPanoramic() {
+  const cfg = readCfg();
+  $('pano-addr').textContent = cfg.ip + ':' + cfg.videoPort;
+  $('pano-hint').textContent = '实时画面连接中…';
+
+  // 模拟加载完成
+  setTimeout(() => {
+    $('pano-hint').textContent = '实时画面传输中';
+    $('pano-placeholder').querySelector('.pano-cam').textContent = '📡';
+  }, 800);
+
+  // 模拟 FPS 波动
+  if (panoSimTimer) clearInterval(panoSimTimer);
+  panoSimTimer = setInterval(() => {
+    const fps = Math.floor(25 + Math.random() * 10);
+    $('pano-fps').textContent = fps + ' FPS';
+  }, 1000);
+}
+
+function leavePanoramic() {
+  if (panoSimTimer) { clearInterval(panoSimTimer); panoSimTimer = null; }
+  $('pano-placeholder').querySelector('.pano-cam').textContent = '🎥';
+  navTo('pg-home');
+}
+
+// ═══════════════════════════════════
+//  STARTUP
+// ═══════════════════════════════════
+genEvents();
+</script>
+</body>
+</html>

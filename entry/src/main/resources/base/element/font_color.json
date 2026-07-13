@@ -2,23 +2,23 @@
   "color": [
     {
       "name": "button_text",
-      "value": "#E3E3E7"
+      "value": "#FFFFFF"
     },
     {
       "name": "text",
-      "value": "#E3E3E7"
+      "value": "#FFFFFF"
     },
     {
       "name": "text_on_light",
-      "value": "#FF3D2F1F"
+      "value": "#111827"
     },
     {
       "name": "text_secondary",
-      "value": "#996B4A2E"
+      "value": "#6B7280"
     },
     {
       "name": "text_muted",
-      "value": "#B36B4A2E"
+      "value": "#9CA3AF"
     }
   ]
 }

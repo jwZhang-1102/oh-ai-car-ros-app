@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.0"
+     xmlns="http://www.w3.org/2000/svg"
+     x="0px"
+     y="0px"
+     viewBox="0 0 130 130"
+     style="enable-background:new 0 0 130 130;"
+     xml:space="preserve">
+<style type="text/css">
+    .st-bg{fill:#FFFFFF;}
+    .st-cam{fill:#FFFFFF;}
+</style>
+    <g id="circle">
+        <path class="st-bg"
+            d="M65,130c-35.8,0-65-29.2-65-65C0,29.2,29.2,0,65,0c35.8,0,65,29.2,65,65
+            C130,100.8,100.8,130,65,130z M65,11.8c-29.3,0-53.2,23.9-53.2,53.2s23.9,53.2,53.2,53.2s53.2-23.9,53.2-53.2
+            S94.3,11.8,65,11.8z"/>
+    </g>
+    <g id="camera">
+        <path class="st-cam"
+            d="M95,48H82.5l-5.8-8H53.3l-5.8,8H35c-3.3,0-6,2.7-6,6v30c0,3.3,2.7,6,6,6h60c3.3,0,6-2.7,6-6V54
+            C101,50.7,98.3,48,95,48z M65,80c-6.1,0-11-4.9-11-11s4.9-11,11-11s11,4.9,11,11S71.1,80,65,80z M89,59h-6v-5h6V59z"/>
+        <circle class="st-cam" cx="65" cy="69" r="7"/>
+    </g>
+</svg>
