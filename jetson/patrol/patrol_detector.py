@@ -22,6 +22,8 @@ import argparse
 import json
 import sys
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -155,7 +157,53 @@ def parse_args() -> argparse.Namespace:
         help="蜂鸣 TCP 回退地址（cmd=13）",
     )
     p.add_argument("--tcp-port", type=int, default=6000, help="蜂鸣 TCP 端口")
+    p.add_argument(
+        "--pause-nav-on-alert",
+        action="store_true",
+        help="检出异物后通知任务协调器暂停 Nav2 并停车",
+    )
+    p.add_argument(
+        "--alert-stop-classes",
+        default="person,bottle,chair",
+        help="触发停车告警的类别（逗号分隔），需配合 --pause-nav-on-alert",
+    )
+    p.add_argument(
+        "--mission-url",
+        default="http://127.0.0.1:6700/mission/alert",
+        help="任务协调器告警接口（patrol_server 提供）",
+    )
     return p.parse_args()
+
+
+def notify_mission_alert(
+    mission_url: str,
+    cls_name: str,
+    event_id: str,
+    confidence: float,
+    timeout: float = 3.0,
+) -> Dict[str, object]:
+    """通知 patrol_server 暂停导航；失败时返回空 dict。"""
+    payload = json.dumps({
+        "class": cls_name,
+        "event_id": event_id,
+        "confidence": confidence,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        mission_url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8")
+            return json.loads(body) if body else {}
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
+        print(
+            f"[patrol_detector] WARN: mission alert 通知失败: {exc}",
+            flush=True,
+        )
+        return {}
 
 
 def load_model(weights: str, device_name: str):
@@ -233,15 +281,19 @@ def save_event(
     pose: Optional[MapPose] = None,
     zone: Optional[DangerZone] = None,
     buzzer: bool = False,
-) -> None:
+    mission_state: Optional[str] = None,
+    nav_paused: bool = False,
+    event_id: Optional[str] = None,
+) -> str:
     PATROL_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shot_name = f"{ts}_{cls_name}.jpg"
+    eid = event_id or f"{ts}_{cls_name}"
+    shot_name = f"{eid}.jpg" if event_id else f"{ts}_{cls_name}.jpg"
     shot_path = PATROL_DIR / shot_name
     cv2.imwrite(str(shot_path), frame)
 
     event: Dict[str, object] = {
-        "id": f"{ts}_{cls_name}",
+        "id": eid,
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "class": cls_name,
         "confidence": round(conf, 3),
@@ -255,7 +307,12 @@ def save_event(
         }
     if zone is not None:
         event["danger_zone"] = zone.name
-        event["buzzer"] = buzzer
+    if buzzer:
+        event["buzzer"] = True
+    if mission_state is not None:
+        event["mission_state"] = mission_state
+    if nav_paused:
+        event["nav_paused"] = True
 
     with EVENTS_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
@@ -265,11 +322,15 @@ def save_event(
     pose_txt = ""
     if pose is not None:
         pose_txt = f" pose=({pose.x:.2f},{pose.y:.2f})"
+    beep_txt = ""
+    if mission_state is not None:
+        beep_txt = f" beep={'on' if buzzer else 'off'}"
     msg = (
         f"{tag} {event['time']} class={cls_name} conf={conf:.2f}"
-        f"{zone_txt}{pose_txt} snapshot={shot_name}"
+        f"{zone_txt}{pose_txt}{beep_txt} snapshot={shot_name}"
     )
     print(msg, flush=True)
+    return eid
 
 
 def main() -> None:
@@ -297,6 +358,15 @@ def main() -> None:
 
     targets: Set[str] = {t.strip() for t in args.targets.split(",") if t.strip()}
     danger_class = args.danger_class.strip()
+    alert_stop_classes: Set[str] = {
+        t.strip() for t in args.alert_stop_classes.split(",") if t.strip()
+    }
+    if args.pause_nav_on_alert:
+        print(
+            f"[patrol_detector] pause-nav-on-alert: stop_classes="
+            f"{sorted(alert_stop_classes)} url={args.mission_url}",
+            flush=True,
+        )
 
     zones: List[DangerZone] = []
     zones_enabled = not args.no_zones
@@ -353,17 +423,38 @@ def main() -> None:
             tcp_host=args.tcp_host,
             tcp_port=args.tcp_port,
             prefer_lib=prefer_lib,
+            prefer_docker=args.docker_nav and not args.buzzer_tcp_only,
+            docker_container=docker_cid,
         )
         if prefer_lib and buzzer.available:
             src = "Rosmaster_Lib"
+        elif args.docker_nav and not args.buzzer_tcp_only:
+            src = "docker ros2:/beep → 容器底盘节点（n1 并行）"
         elif prefer_lib:
             src = "TCP {0}:{1}（串口留给 Docker 导航）".format(
                 args.tcp_host, args.tcp_port)
         else:
-            src = "TCP-only {0}:{1}（Docker 并行模式，未占串口）".format(
-                args.tcp_host, args.tcp_port)
+            src = "TCP-only {0}:{1}".format(args.tcp_host, args.tcp_port)
         print(
             f"[patrol_detector] 蜂鸣器 backend={src} duration={args.buzzer_ms}ms",
+            flush=True,
+        )
+    mission_buzzer = buzzer
+    if (
+        args.pause_nav_on_alert
+        and not args.no_buzzer
+        and mission_buzzer is None
+    ):
+        mission_buzzer = BuzzerController(
+            tcp_host=args.tcp_host,
+            tcp_port=args.tcp_port,
+            prefer_lib=False,
+            prefer_docker=args.docker_nav and not args.buzzer_tcp_only,
+            docker_container=docker_cid,
+        )
+        print(
+            f"[patrol_detector] mission 蜂鸣器 backend=docker ros2:/beep "
+            f"duration={args.buzzer_ms}ms",
             flush=True,
         )
     if args.docker_nav:
@@ -454,7 +545,7 @@ def main() -> None:
                                     alert_pose.x, alert_pose.y, zones,
                                 )
                                 if zone is not None and buzzer is not None:
-                                    trigger_buzzer = buzzer.beep(args.buzzer_ms)
+                                    trigger_buzzer = buzzer.beep_alert(args.buzzer_ms)
                                     if not trigger_buzzer and not buzzer_warned:
                                         print(
                                             "[patrol_detector] WARN: 蜂鸣器触发失败"
@@ -470,9 +561,62 @@ def main() -> None:
                                 )
                                 pose_warned = True
 
+                        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        event_id = f"{ts}_{cls_name}"
+                        mission_state: Optional[str] = None
+                        nav_paused = False
+
+                        if (
+                            args.pause_nav_on_alert
+                            and cls_name in alert_stop_classes
+                        ):
+                            mission_resp = notify_mission_alert(
+                                args.mission_url,
+                                cls_name,
+                                event_id,
+                                conf,
+                            )
+                            if mission_resp.get("ok"):
+                                mission_state = str(
+                                    mission_resp.get("state", "alert_stopped")
+                                )
+                                nav_paused = bool(mission_resp.get("nav_paused", True))
+                                if mission_resp.get("beep"):
+                                    trigger_buzzer = True
+                                elif mission_buzzer is not None:
+                                    if mission_buzzer.beep_alert(args.buzzer_ms):
+                                        trigger_buzzer = True
+                                    elif not mission_resp.get("skipped"):
+                                        print(
+                                            "[patrol_detector] WARN: mission 蜂鸣失败"
+                                            "（需 n1 运行且容器内有 /beep 话题）",
+                                            flush=True,
+                                        )
+                                elif mission_resp.get("skipped"):
+                                    print(
+                                        "[patrol_detector] INFO: mission 已在停车状态"
+                                        "（skipped），本地蜂鸣未配置",
+                                        flush=True,
+                                    )
+                                elif not mission_resp.get("skipped"):
+                                    print(
+                                        "[patrol_detector] WARN: mission 蜂鸣失败"
+                                        "（需 n1 运行且容器内有 /beep 话题）",
+                                        flush=True,
+                                    )
+                            else:
+                                print(
+                                    "[patrol_detector] WARN: mission alert 未送达"
+                                    " patrol_server（检查 nav_mission_coordinator.py）",
+                                    flush=True,
+                                )
+
                         save_event(
                             frame, cls_name, conf,
                             pose=alert_pose, zone=zone, buzzer=trigger_buzzer,
+                            mission_state=mission_state,
+                            nav_paused=nav_paused,
+                            event_id=event_id,
                         )
                         last_alert[cls_name] = now
                         streak[cls_name] = 0

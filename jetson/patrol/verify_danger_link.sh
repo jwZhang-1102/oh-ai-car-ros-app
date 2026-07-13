@@ -6,7 +6,7 @@ ROOT=~/Rosmaster-App/rosmaster
 cd "$ROOT"
 
 echo "========== 1. 文件检查 =========="
-for f in danger_zones.json danger_zone_utils.py pose_reader.py rosmaster_buzzer.py patrol_detector.py; do
+for f in danger_zones.json danger_zone_utils.py pose_reader.py rosmaster_buzzer.py patrol_detector.py danger_zone_lidar.py lidar_scan_utils.py; do
   if [ -f "$f" ]; then
     echo "  OK  $f"
   else
@@ -96,13 +96,12 @@ sys.path.insert(0, ".")
 from rosmaster_buzzer import BuzzerController, encode_buzzer_tcp
 
 print("  TCP 帧(500ms):", encode_buzzer_tcp(500).decode())
-b = BuzzerController()
-backend = "Rosmaster_Lib" if b.available else "TCP:6000"
-print(f"  backend={backend}")
+b = BuzzerController(prefer_lib=False, prefer_docker=True)
+print(f"  backend=prefer_docker (ros2:/beep → Rosmaster → TCP)")
 ok = b.beep(500)
-print(f"  beep(500) -> {'成功（应听到短响）' if ok else '失败'}")
+print(f"  beep(500) -> {'成功（应听到短响）' if ok else '失败'} backend={b.last_backend or 'none'}")
 if not ok:
-    print("  提示: 先运行 ros/run 或确保 TCP 6000 在线: ss -tlnp | grep 6000")
+    print("  提示: 先 n1，再测: docker exec <cid> bash -lc \"ros2 topic list | grep beep\"")
 PY
 
 echo ""
@@ -110,6 +109,28 @@ echo "========== 5. 服务端口 =========="
 ss -tlnp 2>/dev/null | grep -E ':6000|:6700' || netstat -tlnp 2>/dev/null | grep -E ':6000|:6700' || echo "  6000/6700 均未监听"
 
 echo ""
+echo "========== 6. 激光 /scan（方案一，需 n1） =========="
+if [ -n "$CID" ]; then
+  if docker exec "$CID" bash -lc "ros2 topic list 2>/dev/null" | grep -qx "/scan"; then
+    echo "  容器内 /scan 话题 OK"
+    python3 - <<'PY'
+import sys
+sys.path.insert(0, ".")
+from lidar_scan_utils import fetch_docker_scan_once
+s = fetch_docker_scan_once()
+if s:
+    print(f"  读取一帧 scan OK: ranges={len(s.ranges)}")
+else:
+    print("  读取 scan 失败（n1 是否已启动？）")
+PY
+  else
+    echo "  容器内无 /scan → 请先 n1"
+  fi
+else
+  echo "  跳过: 无 Docker 容器"
+fi
+
+echo ""
 echo "========== 完成 =========="
-echo "全部 OK 后: bash start_patrol_host.sh"
-echo "Docker n1 导航 + 人进危险区 + 对摄像头 → 应出现 [DANGER]"
+echo "YOLO 危险区: bash start_patrol_host.sh"
+echo "激光人在危险区: bash start_danger_lidar.sh --bg"

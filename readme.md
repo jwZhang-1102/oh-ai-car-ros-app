@@ -32,6 +32,7 @@
 | YOLO 检测 | `patrol_detector.py`：person / bottle 等，连续帧触发告警 |
 | 事件 HTTP | `patrol_server.py`：6700 提供 `/events`、`/snapshot`、`/health` |
 | 危险区联动 | `danger_zones.json` + map 位姿 + person → 蜂鸣（`[DANGER]`） |
+| **激光危险区** | `danger_zone_lidar.py`：人在危险区（`/scan` + map，无 YOLO） |
 | 一键启停 | `start_patrol_host.sh` / `stop_patrol_host.sh` |
 | 自检 | `verify_danger_link.sh`：多边形、位姿、蜂鸣器 |
 

@@ -135,3 +135,78 @@ python logitech_g29_drive.py --mode drive --max-speed 40
 
 - App 遥控与 G29 脚本**共用 TCP 6000**，**不要同时**从 App 和 G29 发指令  
 - 答辩可演示：「App 巡检看事件 + PC 方向盘现场控车」分场景展示
+
+---
+
+## 罗技 G29 mission 绕障 `g29_mission_drive.py`
+
+Docker 导航 **n1/n2/n3 + mission 告警停车** 后，用 G29 人工绕障。走 **HTTP 6700 `/mission/teleop` → Docker `/cmd_vel`**，**不走 TCP 6000**，不与 n1 抢串口。
+
+### 连接示意
+
+```
+G29 (USB) ──→ Windows PC (本脚本)
+                    │
+                    │  WiFi  POST :6700/mission/teleop
+                    ▼
+              Jetson patrol_server
+                    │
+                    │  docker exec → /cmd_vel
+                    ▼
+              Docker n1 底盘（Nav2 已暂停）
+```
+
+### 前置条件（Jetson）
+
+```bash
+bash start_nav_docker.sh
+bash start_mission_nav.sh
+# RViz 设点导航 → 路上检出瓶子/椅子 → 小车 alert_stopped 停车
+```
+
+### Windows 用法
+
+```cmd
+cd D:\oh-ai-car-ros-app\tools
+python g29_mission_drive.py --backend winmm --calibrate
+python g29_mission_drive.py --backend winmm --ip 10.147.13.194 --mode pedal
+```
+
+**测试 teleop（不插方向盘）**
+
+```cmd
+python g29_mission_drive.py --ip 10.147.13.194 --test-forward
+```
+
+### 踏板映射（默认 `--mode pedal`）
+
+| G29 | cmd_vel |
+|-----|---------|
+| 油门 | 前进 `vx` |
+| 离合 | 后退 `vx` |
+| 刹车 | 停车 |
+| 方向盘 | 转弯 `wz` |
+
+速度单位 m/s、rad/s，默认 `--max-linear 0.15`、`--max-angular 0.45`。场地大可略增，首次建议保持默认。
+
+### 绕障完成后恢复自动导航
+
+```cmd
+curl -X POST http://10.147.13.194:6700/mission/resume
+```
+
+### 与 `logitech_g29_drive.py` 对比
+
+| 脚本 | 通路 | 适用场景 |
+|------|------|----------|
+| `logitech_g29_drive.py` | TCP 6000 | 无 Docker 导航，需 `ros/run` |
+| `g29_mission_drive.py` | HTTP 6700 teleop | **mission 模式** n1 在跑、告警后绕障 |
+
+### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| teleop 被拒 | 须先 YOLO 告警停车，`state=alert_stopped` |
+| 连接 6700 失败 | 小车 `bash start_mission_nav.sh` |
+| 车不动 | `--test-forward` 测通路；加大 `--max-linear` |
+| 和 TCP 版搞混 | mission 绕障**只用** `g29_mission_drive.py` |
