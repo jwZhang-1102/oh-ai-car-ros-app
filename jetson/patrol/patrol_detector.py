@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
 import sys
 import time
 import urllib.error
@@ -109,6 +110,12 @@ def parse_args() -> argparse.Namespace:
         help="导航并行轻量模式：CPU 推理 + 小分辨率，减轻 Jetson 负载",
     )
     p.add_argument(
+        "--infer-every",
+        type=int,
+        default=1,
+        help="每 N 帧做一次 YOLO 推理（跳帧减负，默认 1=每帧）",
+    )
+    p.add_argument(
         "--pose-backend",
         default="auto",
         choices=["auto", "rclpy", "docker"],
@@ -180,7 +187,7 @@ def notify_mission_alert(
     cls_name: str,
     event_id: str,
     confidence: float,
-    timeout: float = 3.0,
+    timeout: float = 15.0,
 ) -> Dict[str, object]:
     """通知 patrol_server 暂停导航；失败时返回空 dict。"""
     payload = json.dumps({
@@ -198,7 +205,12 @@ def notify_mission_alert(
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read().decode("utf-8")
             return json.loads(body) if body else {}
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
+    except (
+        urllib.error.URLError,
+        json.JSONDecodeError,
+        TimeoutError,
+        socket.timeout,
+    ) as exc:
         print(
             f"[patrol_detector] WARN: mission alert 通知失败: {exc}",
             flush=True,
@@ -341,6 +353,7 @@ def main() -> None:
         args.size = min(args.size, 256)
         if args.pose_poll < 3.0:
             args.pose_poll = 3.0
+    infer_every = max(1, int(args.infer_every))
     if args.docker_nav:
         if args.pose_backend == "auto":
             args.pose_backend = "docker"
@@ -475,7 +488,8 @@ def main() -> None:
 
     print(
         f"[patrol_detector] targets={sorted(targets)} conf={args.conf} "
-        f"min_frames={args.min_frames} cooldown={args.cooldown}s",
+        f"min_frames={args.min_frames} cooldown={args.cooldown}s "
+        f"infer_every={infer_every}",
         flush=True,
     )
     print(f"[patrol_detector] weights={args.weights} source=video{args.source}", flush=True)
@@ -501,6 +515,9 @@ def main() -> None:
                 continue
 
             frame_idx += 1
+            if frame_idx % infer_every != 0:
+                continue
+
             hits = infer_frame(
                 model, device, stride, names, nms_fn, scale_fn, letterbox_fn,
                 frame, args.size, args.conf,
@@ -570,6 +587,11 @@ def main() -> None:
                             args.pause_nav_on_alert
                             and cls_name in alert_stop_classes
                         ):
+                            print(
+                                f"[patrol_detector] mission 告警触发 class={cls_name} "
+                                f"conf={conf:.2f} → POST {args.mission_url}",
+                                flush=True,
+                            )
                             mission_resp = notify_mission_alert(
                                 args.mission_url,
                                 cls_name,

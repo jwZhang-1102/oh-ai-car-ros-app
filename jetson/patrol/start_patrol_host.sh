@@ -9,49 +9,61 @@ fi
 #
 # 用法:
 #   bash start_patrol_host.sh                    # 前台，默认导航并行安全
-#   bash start_patrol_host.sh --bg               # 后台
+#   bash start_patrol_host.sh --bg               # 后台：瓶子告警 + 停车（推荐，与导航并行）
 #   bash start_patrol_host.sh --display          # 接显示器看检测框（导航可能变卡）
 #   bash start_patrol_host.sh --nav-lite --bg    # 导航仍卡顿时：CPU 轻量推理
 #   bash start_patrol_host.sh --buzzer-serial    # 仅巡检单机：启用串口蜂鸣（勿与 n1 并行）
-#   bash start_patrol_host.sh --mission --bg     # 导航任务：YOLO 告警自动停车+可恢复
+#   bash start_patrol_host.sh --no-stop-nav --bg # 仅告警不停车
+#   bash start_patrol_host.sh --mission --bg     # 旧任务模式（含 mission/start，一般不必用）
 set -e
 ROOT=~/Rosmaster-App/rosmaster
 cd "$ROOT"
 
 BACKGROUND=false
 DISPLAY_WIN=false
+FOLLOW_LOG=false
 BUZZER_SERIAL=false
 NAV_LITE=false
 MISSION_MODE=false
+STOP_NAV=true
 for arg in "$@"; do
   case "$arg" in
     --bg) BACKGROUND=true ;;
+    --follow) FOLLOW_LOG=true ;;
     --display) DISPLAY_WIN=true ;;
     --buzzer-serial) BUZZER_SERIAL=true ;;
     --nav-lite) NAV_LITE=true ;;
     --mission) MISSION_MODE=true ;;
+    --no-stop-nav) STOP_NAV=false ;;
     --docker-nav)
       echo "[patrol] 提示: --docker-nav 已是默认行为，可省略"
       ;;
     *)
       echo "未知参数: $arg"
-      echo "用法: bash start_patrol_host.sh [--display] [--bg] [--nav-lite] [--buzzer-serial] [--mission]"
+      echo "用法: bash start_patrol_host.sh [--display] [--bg] [--follow] [--nav-lite] [--no-stop-nav] [--buzzer-serial] [--mission]"
       exit 1
       ;;
   esac
 done
 
 # 默认：导航并行 + 危险区 on-demand 位姿（不占串口、不后台轮询）
-DETECTOR_ARGS=(--verbose --docker-nav --pose-on-demand)
+DETECTOR_ARGS=(--docker-nav --pose-on-demand)
+if [ "$BACKGROUND" != true ]; then
+  DETECTOR_ARGS=(--verbose --docker-nav --pose-on-demand)
+fi
 if [ "$BUZZER_SERIAL" = true ]; then
   DETECTOR_ARGS=(--verbose --buzzer-serial)
   echo "[patrol] 单机巡检模式：启用 Rosmaster 串口蜂鸣 — 勿与 Docker 导航同时运行"
 else
   echo "[patrol] 导航并行 + 危险区 on-demand（告警时才读位姿）"
 fi
-if [ "$BACKGROUND" = true ] && [ "$NAV_LITE" = false ] && [ "$BUZZER_SERIAL" = false ]; then
-  NAV_LITE=true
-  echo "[patrol] 后台模式默认启用 nav-lite（减轻负载，利于与导航并行）"
+if [ "$BACKGROUND" = true ] && [ "$NAV_LITE" = false ]; then
+  echo "[patrol] 后台模式：无检测窗口，默认 GPU 推理（导航仍卡顿时加 --nav-lite）"
+  echo "[patrol] 后台静默检测：仅 bottle 告警时打印（无每 30 帧心跳）"
+fi
+if [ "$BACKGROUND" = true ] && [ "$FOLLOW_LOG" = false ]; then
+  FOLLOW_LOG=true
+  echo "[patrol] 后台默认跟随日志（仅 Ctrl+C 退出查看，不停止巡检）"
 fi
 if [ "$NAV_LITE" = true ]; then
   DETECTOR_ARGS+=(--nav-lite)
@@ -61,8 +73,26 @@ if [ "$DISPLAY_WIN" = true ]; then
   DETECTOR_ARGS+=(--display)
   echo "[patrol] WARN: --display 占用 GPU/CPU，导航卡顿时请去掉 --display 或加 --nav-lite"
 fi
+# 后台默认：仅瓶子 + 减负；默认检出后停车（不需 --mission）
+if [ "$BACKGROUND" = true ] && [ "$BUZZER_SERIAL" = false ] && [ "$MISSION_MODE" = false ]; then
+  DETECTOR_ARGS+=(--targets bottle --min-frames 3 --no-zones)
+  if [ "$NAV_LITE" = false ]; then
+    DETECTOR_ARGS+=(--infer-every 3 --size 256)
+  fi
+  if [ "$STOP_NAV" = true ]; then
+    DETECTOR_ARGS+=(--pause-nav-on-alert --alert-stop-classes bottle)
+    echo "[patrol] 后台瓶子：检出 → 蜂鸣 + 暂停 n3（SIGSTOP，不终止 Nav2 节点）"
+    echo "[patrol] 恢复导航: curl -X POST http://127.0.0.1:6700/mission/resume  或 RViz 重设 Goal"
+  else
+    echo "[patrol] 后台瓶子：仅告警，不停车（--no-stop-nav）"
+  fi
+fi
 if [ "$MISSION_MODE" = true ]; then
-  DETECTOR_ARGS+=(--targets bottle --pause-nav-on-alert --alert-stop-classes bottle)
+  DETECTOR_ARGS+=(--targets bottle --min-frames 3 --pause-nav-on-alert --alert-stop-classes bottle --no-zones)
+  if [ "$BACKGROUND" = true ] && [ "$NAV_LITE" = false ]; then
+    DETECTOR_ARGS+=(--infer-every 3 --size 256)
+    echo "[patrol] mission 减负：GPU + 256px + 每3帧推理 + 关闭危险区"
+  fi
   echo "[patrol] mission 模式：仅检出 bottle → 暂停 Nav2 + 蜂鸣 + 记录事件"
   echo "[patrol] 恢复导航: curl -X POST http://127.0.0.1:6700/mission/resume"
 fi
@@ -114,8 +144,14 @@ if [ ! -f patrol_detector.py ]; then
   echo "错误: 找不到 patrol_detector.py"
   exit 1
 fi
-if [ "$MISSION_MODE" = true ] && [ ! -f nav_mission_coordinator.py ]; then
-  echo "错误: --mission 需要 nav_mission_coordinator.py"
+NEED_COORDINATOR=false
+if [ "$MISSION_MODE" = true ]; then
+  NEED_COORDINATOR=true
+elif [ "$BACKGROUND" = true ] && [ "$STOP_NAV" = true ] && [ "$BUZZER_SERIAL" = false ]; then
+  NEED_COORDINATOR=true
+fi
+if [ "$NEED_COORDINATOR" = true ] && [ ! -f nav_mission_coordinator.py ]; then
+  echo "错误: 停车告警需要 nav_mission_coordinator.py"
   exit 1
 fi
 
@@ -137,9 +173,12 @@ echo "=== 巡检服务 ==="
 echo "  HTTP  http://$(hostname -I | awk '{print $1}'):6700/events"
 echo "  事件  tail -f events.jsonl"
 echo "  截图  ls capture/patrol/"
+if [ "$MISSION_MODE" = true ] || { [ "$BACKGROUND" = true ] && [ "$STOP_NAV" = true ] && [ "$BUZZER_SERIAL" = false ]; }; then
+  echo "  恢复  curl -X POST http://127.0.0.1:6700/mission/resume"
+  echo "  状态  curl http://127.0.0.1:6700/mission/status"
+fi
 if [ "$MISSION_MODE" = true ]; then
   echo "  任务  curl http://127.0.0.1:6700/mission/status"
-  echo "  恢复  curl -X POST http://127.0.0.1:6700/mission/resume"
   echo "  终点  编辑 mission_waypoints.json 或 POST /mission/set_end"
 fi
 if [ -f danger_zones.json ]; then
@@ -166,8 +205,15 @@ if [ "$BACKGROUND" = true ]; then
   sleep 2
   if pgrep -f patrol_detector.py >/dev/null; then
     echo "[patrol] patrol_detector 后台 OK (PID $(pgrep -f patrol_detector.py | head -1))"
-    echo "  日志  tail -f patrol_detector.log"
+    echo "  日志文件  patrol_detector.log"
     trap - EXIT INT TERM
+    if [ "$FOLLOW_LOG" = true ]; then
+      echo ""
+      echo "[patrol] 实时检测日志（Ctrl+C 仅退出本查看，patrol 继续后台运行）"
+      echo "  停止巡检: bash stop_patrol_host.sh"
+      echo ""
+      tail -n 30 -f patrol_detector.log
+    fi
   else
     echo "[patrol] patrol_detector 启动失败:"
     tail -n 30 patrol_detector.log || true

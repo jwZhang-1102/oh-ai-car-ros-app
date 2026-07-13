@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-自主导航任务协调器：YOLO 告警 → 暂停 Nav2 → 记录 → 人工绕过 → 恢复至终点。
+自主导航任务协调器：YOLO 告警 → 暂停 n3 导航进程 → 记录 → 人工绕过 → 恢复至终点。
 
 与 Docker Nav2 并行，通过 docker exec 控制容器内 ROS2（不占宿主机串口）。
+默认用 SIGSTOP 暂停 n3（navigation_dwa_launch），不 lifecycle deactivate 终止节点。
 
 用法:
   cd ~/Rosmaster-App/rosmaster
@@ -34,6 +35,21 @@ STATE_FILE = WORK_DIR / "mission_state.json"
 
 GOAL_TOPIC = "/goal_pose"
 CMD_VEL_TOPIC = "/cmd_vel"
+
+# 容器内 n3 对应 launch（与 start_nav_docker.sh 一致）
+N3_LAUNCH_PATTERNS = (
+    "navigation_dwa_launch",
+    "navigation_teb_launch",
+    "navigation_launch",
+)
+N3_NODE_PATTERNS = (
+    "controller_server",
+    "bt_navigator",
+    "planner_server",
+    "recoveries_server",
+    "behavior_server",
+    "lifecycle_manager",
+)
 
 
 class MissionState(str, Enum):
@@ -164,6 +180,54 @@ class NavDockerControl:
         ok, _ = self._exec(inner, timeout=6 + repeat * 0.5, ignore_error=True)
         return ok
 
+    def _signal_n3_processes(self, sig: str) -> bool:
+        """暂停/恢复 n3：对 launch 与 Nav2 子进程发 SIGSTOP/SIGCONT（不杀进程）。"""
+        launch_pat = "|".join(N3_LAUNCH_PATTERNS)
+        node_pat = "|".join(N3_NODE_PATTERNS)
+        inner = (
+            f'launch_pids=$(pgrep -f "{launch_pat}" 2>/dev/null || true); '
+            f'node_pids=$(pgrep -f "{node_pat}" 2>/dev/null || true); '
+            f'pids=$(echo "$launch_pids $node_pids" | tr " " "\\n" | sort -u | grep -v "^$" || true); '
+            f'if [ -z "$pids" ]; then exit 1; fi; '
+            f'for p in $pids; do kill -{sig} "$p" 2>/dev/null || true; done; '
+            f'echo "ok:$pids"'
+        )
+        ok, _ = self._exec(inner, timeout=12, ignore_error=True)
+        return ok
+
+    def suspend_n3_nav_stack(self) -> bool:
+        """暂停 n3（SIGSTOP），n1 底盘仍运行。"""
+        return self._signal_n3_processes("STOP")
+
+    def resume_n3_nav_stack(self) -> bool:
+        """恢复 n3（SIGCONT）。"""
+        return self._signal_n3_processes("CONT")
+
+    def deactivate_nav_nodes(self) -> bool:
+        """兜底：lifecycle deactivate（会终止节点活跃状态，一般不用）。"""
+        nodes = ["/bt_navigator", "/controller_server", "/planner_server"]
+        any_ok = False
+        for node in nodes:
+            ok, _ = self._exec(
+                f"ros2 lifecycle set {node} deactivate 2>/dev/null",
+                timeout=10,
+                ignore_error=True,
+            )
+            any_ok = any_ok or ok
+        return any_ok
+
+    def activate_nav_nodes(self) -> bool:
+        nodes = ["/planner_server", "/controller_server", "/bt_navigator"]
+        any_ok = False
+        for node in nodes:
+            ok, _ = self._exec(
+                f"ros2 lifecycle set {node} activate 2>/dev/null",
+                timeout=10,
+                ignore_error=True,
+            )
+            any_ok = any_ok or ok
+        return any_ok
+
     def pause_bt_navigator(self) -> bool:
         services = [
             "/bt_navigator/pause",
@@ -200,6 +264,8 @@ class NavDockerControl:
             "action_msgs/srv/CancelGoal {} 2>/dev/null",
             "ros2 service call /bt_navigator/navigate_to_pose/_action/cancel_goal "
             "action_msgs/srv/CancelGoal {} 2>/dev/null",
+            "ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose "
+            "'{pose: {header: {frame_id: map}}}' --cancel 2>/dev/null",
         ]
         any_ok = False
         for inner in cancel_cmds:
@@ -280,6 +346,7 @@ class MissionCoordinator:
         while not self._teleop_stop.is_set():
             vx = vy = wz = 0.0
             publish = False
+            hold_stop = False
             with self._lock:
                 state = self._status.state
                 if state in (
@@ -288,9 +355,16 @@ class MissionCoordinator:
                 ):
                     if time.time() < self._teleop_until:
                         vx, vy, wz = self._teleop_vx, self._teleop_vy, self._teleop_wz
-                        publish = abs(vx) > 1e-4 or abs(vy) > 1e-4 or abs(wz) > 1e-4
+                        publish = (
+                            abs(vx) > 1e-4 or abs(vy) > 1e-4 or abs(wz) > 1e-4
+                        )
+                    elif state == MissionState.ALERT_STOPPED.value:
+                        # 告警停车：持续发零速，压住 Nav2 的 cmd_vel（不是抢串口）
+                        hold_stop = True
             if publish:
                 self._nav.publish_cmd_vel(vx, vy, wz, repeat=1)
+            elif hold_stop:
+                self._nav.publish_cmd_vel(0, 0, 0, repeat=1)
             time.sleep(0.1)
 
     def _persist_state(self) -> None:
@@ -402,10 +476,12 @@ class MissionCoordinator:
 
     def _pause_navigation(self) -> str:
         notes: List[str] = []
-        if self._nav.pause_bt_navigator():
-            notes.append("bt_navigator pause")
         if self._nav.cancel_nav_goals():
             notes.append("cancel goals")
+        if self._nav.suspend_n3_nav_stack():
+            notes.append("n3 suspended")
+        elif self._nav.deactivate_nav_nodes():
+            notes.append("lifecycle deactivate (fallback)")
         if self._nav.publish_cmd_vel(0, 0, 0, repeat=5):
             notes.append("cmd_vel zero")
         if not notes:
@@ -516,41 +592,57 @@ class MissionCoordinator:
     def resume(self) -> Dict[str, Any]:
         with self._lock:
             self._load_waypoints()
-            if self._end_goal is None:
-                return {
-                    "ok": False,
-                    "error": "无终点坐标：编辑 mission_waypoints.json 或 POST /mission/set_end",
-                }
-
             self._teleop_vx = self._teleop_vy = self._teleop_wz = 0.0
             self._teleop_until = 0.0
-            self._nav.publish_cmd_vel(0, 0, 0, repeat=3)
-            self._set_state(MissionState.RESUMING, "正在恢复导航至终点", nav_paused=False)
+            end_goal = self._end_goal
+            if end_goal is not None:
+                self._nav.publish_cmd_vel(0, 0, 0, repeat=3)
+                self._set_state(MissionState.RESUMING, "正在恢复 n3 导航", nav_paused=False)
+            else:
+                self._set_state(
+                    MissionState.IDLE,
+                    "已恢复 n3；无终点文件，请在 RViz 重设 Goal",
+                    nav_paused=False,
+                )
 
-        goal_ok = self._nav.publish_goal_pose(
-            self._end_goal, frame_id=self._frame_id,
-        )
+        n3_ok = self._nav.resume_n3_nav_stack()
+        goal_ok = False
+        if end_goal is not None:
+            goal_ok = self._nav.publish_goal_pose(
+                end_goal, frame_id=self._frame_id,
+            )
         resume_ok = self._nav.resume_bt_navigator()
+        activate_ok = False
+        if not n3_ok:
+            activate_ok = self._nav.activate_nav_nodes()
 
         with self._lock:
             notes: List[str] = []
-            if goal_ok:
-                notes.append(f"goal {self._end_goal.to_dict()}")
+            if n3_ok:
+                notes.append("n3 resumed")
+            if goal_ok and end_goal is not None:
+                notes.append(f"goal {end_goal.to_dict()}")
+            if activate_ok:
+                notes.append("lifecycle activate (fallback)")
             if resume_ok:
                 notes.append("bt_navigator resume")
-            if not goal_ok and not resume_ok:
+            if not n3_ok and not goal_ok and not resume_ok and not activate_ok:
                 err = self._nav.last_error or "恢复失败"
                 self._set_state(MissionState.FAILED, err, nav_paused=True)
                 return {"ok": False, "error": err, "state": self._status.state}
 
-            msg = "已恢复导航: " + ", ".join(notes)
-            self._set_state(MissionState.NAVIGATING, msg, nav_paused=False)
+            if end_goal is not None and goal_ok:
+                msg = "已恢复导航: " + ", ".join(notes)
+                self._set_state(MissionState.NAVIGATING, msg, nav_paused=False)
+            else:
+                msg = "已恢复 n3: " + ", ".join(notes) + "；请在 RViz 设 Goal"
+                self._set_state(MissionState.IDLE, msg, nav_paused=False)
             print(f"[mission] RESUME {msg}", flush=True)
             return {
                 "ok": True,
                 "state": self._status.state,
                 "message": msg,
-                "end_goal": self._end_goal.to_dict(),
+                "end_goal": end_goal.to_dict() if end_goal else None,
             }
 
 

@@ -75,7 +75,7 @@ if [ "$DISPLAY_WIN" = true ]; then
   echo "[mission] display 模式：前台显示检测窗口（需 NoMachine 桌面）"
 else
   PATROL_ARGS+=(--bg)
-  echo "[mission] 后台模式：日志 tail -f patrol_detector.log"
+  echo "[mission] 后台模式：默认 GPU 推理，终端实时显示 patrol_detector.log"
 fi
 
 # mission/start 已在 start_patrol_host.sh 内执行（display 前台模式也会跑到）

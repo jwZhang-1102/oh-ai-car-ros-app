@@ -70,12 +70,7 @@ def find_nav_container(explicit: Optional[str] = None) -> Optional[str]:
         lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
         return lines[0] if lines else None
 
-    # 与 start_patrol_host.sh 一致：任意运行中容器即可
-    cid = _run(["docker", "ps", "-q"])
-    if cid:
-        return cid.split()[0]
-
-    # 回退：按镜像名偏好匹配
+    # 优先 autodrive / yahboom 导航容器（避免 n1/n2/n3 多容器时误选）
     try:
         out = subprocess.check_output(
             ["docker", "ps", "--format", "{{.ID}} {{.Image}}"],
@@ -84,10 +79,10 @@ def find_nav_container(explicit: Optional[str] = None) -> Optional[str]:
             stderr=subprocess.DEVNULL,
         )
     except Exception:
-        return None
+        out = ""
 
-    preferred = []
-    fallback = []
+    preferred: list[str] = []
+    fallback: list[str] = []
     for line in out.splitlines():
         parts = line.split(None, 1)
         if not parts:
@@ -102,6 +97,10 @@ def find_nav_container(explicit: Optional[str] = None) -> Optional[str]:
         return preferred[0]
     if fallback:
         return fallback[0]
+
+    cid = _run(["docker", "ps", "-q"])
+    if cid:
+        return cid.split()[0]
     return None
 
 
