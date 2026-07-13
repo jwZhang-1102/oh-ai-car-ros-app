@@ -116,6 +116,15 @@ struct Index {
             iconColor: '#059669',
             action: () => router.pushUrl({ url: 'pages/PatrolPage' })
           })
+
+          FeatureCard({
+            icon: $r('app.media.panoramic'),
+            title: '全景视角',
+            desc: '全屏显示摄像机画面',
+            bgColor: '#FEF3C7',
+            iconColor: '#D97706',
+            action: () => router.pushUrl({ url: 'pages/PanoramicView' })
+          })
         }
         .width('100%')
         .padding({ left: '16vp', right: '16vp', bottom: '32vp' })

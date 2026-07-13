@@ -4,6 +4,7 @@
     "pages/MecanumWheel",
     "pages/RemoteControl",
     "pages/NetworkSettings",
-    "pages/PatrolPage"
+    "pages/PatrolPage",
+    "pages/PanoramicView"
   ]
 }

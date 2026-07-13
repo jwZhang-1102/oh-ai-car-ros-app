@@ -1,0 +1,584 @@
+这是完整的 HTML 代码，直接保存为 .html 文件在浏览器中打开即可：
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>智检哨兵 - 机器人控制系统</title>
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<style>
+        body {
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .phone-container {
+            width: 390px;
+            height: 844px;
+            background: #ffffff;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+            border: 8px solid #1f2937;
+        }
+        .safe-area-bottom {
+            height: 24px;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .home-indicator {
+            width: 120px;
+            height: 5px;
+            background: #e5e7eb;
+            border-radius: 10px;
+        }
+        .page {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #f9fafb;
+        }
+        .page.active {
+            display: flex;
+        }
+        .nav-bar {
+            height: 64px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-bottom: 1px solid #f3f4f6;
+            flex-shrink: 0;
+        }
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            padding-bottom: 40px;
+        }
+        /* Toggle Switch */
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #2563eb;
+        }
+        .toggle-checkbox:checked + .toggle-label .toggle-dot {
+            transform: translateX(100%);
+        }
+        /* Joystick Simulation */
+        .joystick-base {
+            width: 180px;
+            height: 180px;
+            background: #e5e7eb;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .joystick-stick {
+            width: 70px;
+            height: 70px;
+            background: #2563eb;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+<div class="phone-container">
+<!-- 页面 1: 网络设置页 -->
+<div class="page active" id="page-network">
+<div class="nav-bar">
+<button class="text-gray-500" onclick="alert('已退出程序')"><iconify-icon icon="mdi:chevron-left" width="28"></iconify-icon></button>
+<h1 class="font-bold text-lg">连接小车</h1>
+<div class="w-8"></div>
+</div>
+<div class="content">
+<div class="bg-white rounded-2xl p-5 shadow-sm space-y-6">
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">小车 IP 地址</label>
+<input class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="请输入 IP 地址" type="text" value="192.168.1.100"/>
+</div>
+<!-- 端口列表 -->
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+<div>
+<h3 class="font-medium text-gray-900">控车 TCP</h3>
+<p class="text-xs text-gray-500">端口: 8899</p>
+</div>
+<div class="flex items-center space-x-3">
+<input class="w-20 px-2 py-1 text-sm border rounded" type="number" value="8899"/>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label w-11 h-6 bg-gray-200 rounded-full transition-colors relative">
+<div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+</div>
+</label>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+<div>
+<h3 class="font-medium text-gray-900">视频</h3>
+<p class="text-xs text-gray-500">端口: 8900</p>
+</div>
+<div class="flex items-center space-x-3">
+<input class="w-20 px-2 py-1 text-sm border rounded" type="number" value="8900"/>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label w-11 h-6 bg-gray-200 rounded-full transition-colors relative">
+<div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+</div>
+</label>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+<div>
+<h3 class="font-medium text-gray-900">巡检 HTTP</h3>
+<p class="text-xs text-gray-500">端口: 8901</p>
+</div>
+<div class="flex items-center space-x-3">
+<input class="w-20 px-2 py-1 text-sm border rounded" type="number" value="8901"/>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label w-11 h-6 bg-gray-200 rounded-full transition-colors relative">
+<div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+</div>
+</label>
+</div>
+</div>
+</div>
+<div class="flex items-start space-x-2 text-red-500 text-sm bg-red-50 p-3 rounded-xl">
+<iconify-icon class="mt-0.5" icon="mdi:alert"></iconify-icon>
+<p>注意：摄像头端口与其它设备可能存在冲突</p>
+</div>
+</div>
+<button class="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all" onclick="showPage('page-home')">
+                    连接小车
+                </button>
+</div>
+<div class="safe-area-bottom"><div class="home-indicator"></div></div>
+</div>
+<!-- 页面 2: 主页 -->
+<div class="page" id="page-home">
+<div class="nav-bar">
+<div class="w-8"></div>
+<h1 class="font-bold text-lg">智检哨兵</h1>
+<div class="w-8"></div>
+</div>
+<div class="content space-y-4">
+<!-- 状态卡片 -->
+<div class="bg-white rounded-2xl p-5 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center space-x-2">
+<span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+<span class="font-bold text-lg">已连接</span>
+</div>
+<span class="text-gray-500 text-sm">192.168.1.100</span>
+</div>
+<button class="w-full bg-red-50 text-red-600 font-medium py-3 rounded-xl border border-red-100 active:bg-red-100 transition-colors" onclick="showPage('page-network')">
+                        断开连接
+                    </button>
+</div>
+<!-- 功能列表 -->
+<div class="grid gap-4">
+<div class="bg-white p-4 rounded-2xl shadow-sm flex items-center space-x-4 active:bg-gray-50 transition-colors cursor-pointer group" onclick="showPage('page-mecanum')">
+<div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+<iconify-icon icon="mdi:cogs" width="24"></iconify-icon>
+</div>
+<div class="flex-1">
+<h3 class="font-bold">麦科朗姆</h3>
+<p class="text-xs text-gray-500">控制四个麦克纳姆轮</p>
+</div>
+<iconify-icon class="text-gray-300 group-hover:text-blue-500" icon="mdi:chevron-right"></iconify-icon>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex items-center space-x-4 active:bg-gray-50 transition-colors cursor-pointer group" onclick="showPage('page-remote')">
+<div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
+<iconify-icon icon="mdi:gamepad-variant" width="24"></iconify-icon>
+</div>
+<div class="flex-1">
+<h3 class="font-bold">单独控制</h3>
+<p class="text-xs text-gray-500">遥控小车运动</p>
+</div>
+<iconify-icon class="text-gray-300 group-hover:text-indigo-500" icon="mdi:chevron-right"></iconify-icon>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex items-center space-x-4 active:bg-gray-50 transition-colors cursor-pointer group" onclick="showPage('page-inspection')">
+<div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+<iconify-icon icon="mdi:robot" width="24"></iconify-icon>
+</div>
+<div class="flex-1">
+<h3 class="font-bold">智能巡检</h3>
+<p class="text-xs text-gray-500">AI 智能巡检检测</p>
+</div>
+<iconify-icon class="text-gray-300 group-hover:text-green-500" icon="mdi:chevron-right"></iconify-icon>
+</div>
+</div>
+</div>
+<div class="safe-area-bottom"><div class="home-indicator"></div></div>
+</div>
+<!-- 页面 3: 遥控页 -->
+<div class="page" id="page-remote">
+<div class="nav-bar">
+<button class="text-gray-500" onclick="showPage('page-home')"><iconify-icon icon="mdi:chevron-left" width="28"></iconify-icon></button>
+<h1 class="font-bold text-lg">单独控制</h1>
+<div class="w-8"></div>
+</div>
+<div class="content space-y-4">
+<!-- 视频区域 -->
+<div class="aspect-video bg-gray-900 rounded-2xl overflow-hidden relative border-4 border-white shadow-md">
+<img alt="Real-time video stream from robot camera" class="w-full h-full object-cover opacity-50" src=""/>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-white">
+<iconify-icon class="mb-2 opacity-50" icon="mdi:video-off" width="48"></iconify-icon>
+<p class="text-sm font-medium">实时视频画面</p>
+</div>
+<div class="absolute top-2 right-2 bg-black/50 px-2 py-1 rounded text-[10px] text-white backdrop-blur-md">
+                        LIVE: 8900
+                    </div>
+</div>
+<!-- 模式切换 -->
+<div class="bg-gray-200 p-1 rounded-xl flex">
+<button class="flex-1 py-2 rounded-lg font-medium text-sm transition-all bg-white shadow-sm text-blue-600" id="btn-mode-button" onclick="toggleRemoteMode('button')">按钮模式</button>
+<button class="flex-1 py-2 rounded-lg font-medium text-sm transition-all text-gray-500" id="btn-mode-joystick" onclick="toggleRemoteMode('joystick')">摇杆模式</button>
+</div>
+<!-- 控制区：按钮模式 -->
+<div class="grid grid-cols-3 gap-3" id="remote-buttons">
+<div></div>
+<button class="aspect-square bg-white rounded-2xl shadow-sm flex items-center justify-center active:bg-blue-50 active:text-blue-600 transition-all">
+<iconify-icon icon="mdi:chevron-up" width="36"></iconify-icon>
+</button>
+<div></div>
+<button class="aspect-square bg-white rounded-2xl shadow-sm flex items-center justify-center active:bg-blue-50 active:text-blue-600 transition-all">
+<iconify-icon icon="mdi:chevron-left" width="36"></iconify-icon>
+</button>
+<button class="aspect-square bg-red-500 text-white rounded-2xl shadow-lg flex items-center justify-center active:scale-95 transition-all">
+<iconify-icon icon="mdi:stop" width="36"></iconify-icon>
+</button>
+<button class="aspect-square bg-white rounded-2xl shadow-sm flex items-center justify-center active:bg-blue-50 active:text-blue-600 transition-all">
+<iconify-icon icon="mdi:chevron-right" width="36"></iconify-icon>
+</button>
+<button class="aspect-square bg-white rounded-2xl shadow-sm flex items-center justify-center active:bg-blue-50 active:text-blue-600 transition-all">
+<iconify-icon icon="mdi:undo-variant" width="28"></iconify-icon>
+</button>
+<button class="aspect-square bg-white rounded-2xl shadow-sm flex items-center justify-center active:bg-blue-50 active:text-blue-600 transition-all">
+<iconify-icon icon="mdi:chevron-down" width="36"></iconify-icon>
+</button>
+<button class="aspect-square bg-white rounded-2xl shadow-sm flex items-center justify-center active:bg-blue-50 active:text-blue-600 transition-all">
+<iconify-icon icon="mdi:redo-variant" width="28"></iconify-icon>
+</button>
+</div>
+<!-- 控制区：摇杆模式 -->
+<div class="hidden flex flex-col items-center justify-center py-6" id="remote-joystick">
+<div class="joystick-base" id="joy-base">
+<div class="joystick-stick" id="joy-stick"></div>
+</div>
+<p class="mt-4 text-xs text-gray-400">滑动摇杆控制运动</p>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<iconify-icon class="text-blue-500" icon="mdi:map-marker-path" width="24"></iconify-icon>
+<span class="font-medium">自动循迹</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label w-11 h-6 bg-gray-200 rounded-full transition-colors relative">
+<div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+</div>
+</label>
+</div>
+</div>
+<div class="safe-area-bottom"><div class="home-indicator"></div></div>
+</div>
+<!-- 页面 4: 麦克纳姆轮页 -->
+<div class="page" id="page-mecanum">
+<div class="nav-bar">
+<button class="text-gray-500" onclick="showPage('page-home')"><iconify-icon icon="mdi:chevron-left" width="28"></iconify-icon></button>
+<h1 class="font-bold text-lg">麦科朗姆</h1>
+<div class="w-8"></div>
+</div>
+<div class="content space-y-6">
+<!-- 滑块控制区 -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white p-4 rounded-2xl shadow-sm space-y-3 border-l-4 border-blue-500">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-gray-400">FL (左前)</span>
+<span class="text-sm font-bold text-blue-600" id="val-fl">0</span>
+</div>
+<input class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" max="100" min="-100" oninput="updateWheelVal('fl', this.value)" type="range" value="0"/>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm space-y-3 border-r-4 border-blue-500">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-gray-400">FR (右前)</span>
+<span class="text-sm font-bold text-blue-600" id="val-fr">0</span>
+</div>
+<input class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" max="100" min="-100" oninput="updateWheelVal('fr', this.value)" type="range" value="0"/>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm space-y-3 border-l-4 border-gray-300">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-gray-400">RL (左后)</span>
+<span class="text-sm font-bold text-blue-600" id="val-rl">0</span>
+</div>
+<input class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" max="100" min="-100" oninput="updateWheelVal('rl', this.value)" type="range" value="0"/>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm space-y-3 border-r-4 border-gray-300">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-gray-400">RR (右后)</span>
+<span class="text-sm font-bold text-blue-600" id="val-rr">0</span>
+</div>
+<input class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" max="100" min="-100" oninput="updateWheelVal('rr', this.value)" type="range" value="0"/>
+</div>
+</div>
+<!-- 摇杆辅助 -->
+<div class="flex justify-center py-4">
+<div class="joystick-base">
+<div class="joystick-stick"></div>
+</div>
+</div>
+<div class="flex space-x-3">
+<button class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md active:bg-blue-700">更新速度</button>
+<button class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl active:bg-gray-300" onclick="resetWheels()">全部归零</button>
+</div>
+</div>
+<div class="safe-area-bottom"><div class="home-indicator"></div></div>
+</div>
+<!-- 页面 5: 智能巡检页 -->
+<div class="page" id="page-inspection">
+<div class="nav-bar">
+<button class="text-gray-500" onclick="showPage('page-home')"><iconify-icon icon="mdi:chevron-left" width="28"></iconify-icon></button>
+<h1 class="font-bold text-lg">智能巡检</h1>
+<div class="w-8"></div>
+</div>
+<div class="content space-y-4">
+<!-- 连接卡片 -->
+<div class="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+<div>
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 bg-green-500 rounded-full"></span>
+<span class="text-sm font-bold">192.168.1.100:8901</span>
+</div>
+<p class="text-xs text-gray-400 mt-1">巡检服务运行中</p>
+</div>
+<button class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center">
+<iconify-icon class="mr-1" icon="mdi:refresh"></iconify-icon> 刷新
+                    </button>
+</div>
+<div class="flex items-center justify-between px-2">
+<span class="text-xs text-gray-500 uppercase tracking-wider font-bold">YOLO 检测事件</span>
+<div class="flex items-center space-x-2">
+<span class="text-xs text-gray-500">自动刷新</span>
+<label class="relative inline-flex items-center cursor-pointer scale-75 origin-right">
+<input checked="" class="sr-only toggle-checkbox" type="checkbox"/>
+<div class="toggle-label w-11 h-6 bg-gray-200 rounded-full transition-colors relative">
+<div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+</div>
+</label>
+</div>
+</div>
+<!-- 事件列表 -->
+<div class="space-y-3" id="event-list">
+<div class="bg-white p-3 rounded-2xl shadow-sm flex items-center space-x-3 active:bg-gray-50 cursor-pointer" onclick="openEventDetail('Person', '98.5%')">
+<div class="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+<img alt="Person detection thumbnail" class="w-full h-full object-cover" src=""/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<span class="font-bold text-sm">Person</span>
+<span class="text-[10px] text-gray-400">10:42:01</span>
+</div>
+<div class="flex items-center mt-1">
+<div class="flex-1 h-1 bg-gray-100 rounded-full mr-2">
+<div class="h-1 bg-green-500 rounded-full w-[98%]"></div>
+</div>
+<span class="text-xs text-green-600 font-bold">98.5%</span>
+</div>
+</div>
+</div>
+<div class="bg-white p-3 rounded-2xl shadow-sm flex items-center space-x-3 active:bg-gray-50 cursor-pointer" onclick="openEventDetail('Dog', '85.2%')">
+<div class="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+<img alt="Dog detection thumbnail" class="w-full h-full object-cover" src=""/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<span class="font-bold text-sm">Dog</span>
+<span class="text-[10px] text-gray-400">10:41:45</span>
+</div>
+<div class="flex items-center mt-1">
+<div class="flex-1 h-1 bg-gray-100 rounded-full mr-2">
+<div class="h-1 bg-orange-500 rounded-full w-[85%]"></div>
+</div>
+<span class="text-xs text-orange-600 font-bold">85.2%</span>
+</div>
+</div>
+</div>
+<div class="bg-white p-3 rounded-2xl shadow-sm flex items-center space-x-3 active:bg-gray-50 cursor-pointer" onclick="openEventDetail('Car', '92.1%')">
+<div class="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+<img alt="Car detection thumbnail" class="w-full h-full object-cover" src=""/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between">
+<span class="font-bold text-sm">Car</span>
+<span class="text-[10px] text-gray-400">10:41:22</span>
+</div>
+<div class="flex items-center mt-1">
+<div class="flex-1 h-1 bg-gray-100 rounded-full mr-2">
+<div class="h-1 bg-blue-500 rounded-full w-[92%]"></div>
+</div>
+<span class="text-xs text-blue-600 font-bold">92.1%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden py-20 flex flex-col items-center justify-center text-gray-400" id="empty-state">
+<iconify-icon class="mb-2" icon="mdi:tray-blank" width="48"></iconify-icon>
+<p>暂无检测事件</p>
+</div>
+</div>
+<div class="safe-area-bottom"><div class="home-indicator"></div></div>
+</div>
+<!-- Event Detail Modal -->
+<div class="hidden absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm" id="modal-event">
+<div class="bg-white w-full rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+<div class="p-4 flex justify-between items-center border-bottom">
+<h3 class="font-bold">检测详情</h3>
+<button class="text-gray-400" onclick="closeModal()"><iconify-icon icon="mdi:close" width="24"></iconify-icon></button>
+</div>
+<div class="p-4 space-y-4">
+<div class="aspect-square bg-gray-100 rounded-2xl overflow-hidden border">
+<img alt="Full size detection capture" class="w-full h-full object-cover" src=""/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-gray-50 p-3 rounded-xl">
+<p class="text-[10px] text-gray-400 uppercase">类别</p>
+<p class="font-bold text-blue-600" id="modal-type">Person</p>
+</div>
+<div class="bg-gray-50 p-3 rounded-xl">
+<p class="text-[10px] text-gray-400 uppercase">置信度</p>
+<p class="font-bold text-green-600" id="modal-conf">98.5%</p>
+</div>
+<div class="col-span-2 bg-gray-50 p-3 rounded-xl">
+<p class="text-[10px] text-gray-400 uppercase">检测时间</p>
+<p class="font-medium">2026-07-13 10:42:01</p>
+</div>
+</div>
+</div>
+<div class="p-4 pt-0">
+<button class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl" onclick="closeModal()">返回列表</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+        // 页面切换逻辑
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            // 切换页面时重置某些状态
+            if (pageId === 'page-remote') {
+                toggleRemoteMode('button');
+            }
+        }
+
+        // 遥控页模式切换
+        function toggleRemoteMode(mode) {
+            const btnMod = document.getElementById('btn-mode-button');
+            const joyMod = document.getElementById('btn-mode-joystick');
+            const btnArea = document.getElementById('remote-buttons');
+            const joyArea = document.getElementById('remote-joystick');
+
+            if (mode === 'button') {
+                btnMod.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+                btnMod.classList.remove('text-gray-500');
+                joyMod.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+                joyMod.classList.add('text-gray-500');
+                btnArea.classList.remove('hidden');
+                joyArea.classList.add('hidden');
+            } else {
+                joyMod.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+                joyMod.classList.remove('text-gray-500');
+                btnMod.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+                btnMod.classList.add('text-gray-500');
+                joyArea.classList.remove('hidden');
+                btnArea.classList.add('hidden');
+                initJoystick();
+            }
+        }
+
+        // 摇杆简单模拟
+        function initJoystick() {
+            const stick = document.getElementById('joy-stick');
+            const base = document.getElementById('joy-base');
+            if (!stick || !base) return;
+
+            // 这里仅做简单的视觉交互逻辑演示
+            let isDragging = false;
+
+            stick.onmousedown = (e) => { isDragging = true; };
+            window.onmouseup = () => {
+                isDragging = false;
+                stick.style.transform = 'translate(0, 0)';
+            };
+            window.onmousemove = (e) => {
+                if (!isDragging) return;
+                const rect = base.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let dx = e.clientX - centerX;
+                let dy = e.clientY - centerY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                const maxDist = 55;
+                if (distance > maxDist) {
+                    dx = (dx / distance) * maxDist;
+                    dy = (dy / distance) * maxDist;
+                }
+                stick.style.transform = `translate(${dx}px, ${dy}px)`;
+            };
+        }
+
+        // 麦轮值更新
+        function updateWheelVal(id, val) {
+            document.getElementById('val-' + id).innerText = val;
+        }
+
+        function resetWheels() {
+            const wheels = ['fl', 'fr', 'rl', 'rr'];
+            wheels.forEach(id => {
+                updateWheelVal(id, 0);
+                const input = document.querySelector(`input[oninput*="${id}"]`);
+                if (input) input.value = 0;
+            });
+        }
+
+        // 弹窗逻辑
+        function openEventDetail(type, conf) {
+            document.getElementById('modal-type').innerText = type;
+            document.getElementById('modal-conf').innerText = conf;
+            document.getElementById('modal-event').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-event').classList.add('hidden');
+        }
+
+        // 模拟 YOLO 事件实时增加 (可选，这里只做一个静态演示逻辑)
+        // setInterval(() => { ... }, 4000);
+
+    </script>
+</body>
+</html>
+保存为 .html 文件后直接用浏览器打开即可查看效果，所有 5 个页面的切换、开关、滑块、摇杆、模式切换、模态框等交互都已完成。

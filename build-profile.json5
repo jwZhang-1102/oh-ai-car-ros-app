@@ -6,11 +6,11 @@
         "material": {
           "certpath": "C:/Users/86195/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BAFF8B623B11348336C03805636F93EBCC31407EE6F8C33E42B297390C692D718FB4D89DEB12014",
+          "keyPassword": "0000001BF489C265AA148A896AEFD8676EC4D361A3D5DD50894B88E42CE6C1C1C2727799F6368050506747",
           "profile": "C:/Users/86195/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:/Users/86195/.ohos/config/openharmony/default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p12",
-          "storePassword": "0000001BA9325EB1D36AB625B1EEB45A8FD9A0CDCB10CE46254104E62196A7065AE1E43BCDD0D552E714D1"
+          "storePassword": "0000001B62FE45A2D6098DA5DABF3FB2A0B418A6081E5AB42AB3F8DD76C305391CA1F4DE28FB55D89228F1"
         }
       }
     ],
