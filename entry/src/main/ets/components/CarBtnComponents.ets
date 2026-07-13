@@ -1,118 +1,108 @@
+/**
+ * 按键控制 - 竖屏极简风格
+ */
 import { carApi } from '../CarUtill/CarApi'
 import { CarDirection } from '../CarUtill/CarEnum'
-import { ButtonShadow } from '../styles/styles'
 
-/**
- * 按键控制UI组件
- */
 @Component
 struct CarBtnComponents {
   build() {
     Grid() {
       GridItem() {
-        Button("左转")
-          .fontSize('13fp')
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.LeftRotate) }))
+        Column()
       }
 
       GridItem() {
-        Button("前")
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Front) }))
+        Button() {
+          Text('▲').fontSize('28fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.button_background'))
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Front) }))
       }
 
       GridItem() {
-        Button("右转")
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.RightRotate) }))
-      }
-
-      // 第二行
-      GridItem() {
-        Button("左")
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Left) }))
+        Column()
       }
 
       GridItem() {
-        Button("停")
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Brake) }))
-
+        Button() {
+          Text('◀').fontSize('28fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.button_background'))
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Left) }))
       }
 
       GridItem() {
-        Button("右")
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Right) }))
-
+        Button() {
+          Text('■').fontSize('24fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor('#EF4444')
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Brake) }))
       }
-
-      // 第三行
-      GridItem()
 
       GridItem() {
-        Button("后")
-          .backgroundColor($r('app.color.button_background'))
-          .shadow(ButtonShadow)
-          .width('100%')
-          .height('100%')
-          .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.After) }))
+        Button() {
+          Text('▶').fontSize('28fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.button_background'))
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.Right) }))
       }
 
-      GridItem()
+      GridItem() {
+        Button() {
+          Text('↺').fontSize('22fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.button_background'))
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.LeftRotate) }))
+      }
+
+      GridItem() {
+        Button() {
+          Text('▼').fontSize('28fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.button_background'))
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.After) }))
+      }
+
+      GridItem() {
+        Button() {
+          Text('↻').fontSize('22fp').fontColor(Color.White)
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.button_background'))
+        .borderRadius('14vp')
+        .onTouch(this.makeTouchEvent((): void => { carApi.carBtnCtrl(CarDirection.RightRotate) }))
+      }
     }
     .width('100%')
-    .height('100%')
+    .height('260vp')
     .rowsTemplate('1fr 1fr 1fr')
     .columnsTemplate('1fr 1fr 1fr')
-    .columnsGap('6vp')
-    .rowsGap('6vp')
+    .columnsGap('10vp')
+    .rowsGap('10vp')
   }
 
-  /**
-   * 车辆拥有统一的触摸停止事件，所以通过本函数来构造响应函数
-   * @param upEvent
-   */
   makeTouchEvent(upEvent: (event?: TouchEvent) => void): (event?: TouchEvent) => void {
-    let fun = (event?: TouchEvent): void => {
-      // 防御性编程
-      if (!event)
-        return;
-
+    return (event?: TouchEvent): void => {
+      if (!event) return
       if (event.type === TouchType.Up) {
-        // 如果抬起触摸事件时，暂停车辆移动
         carApi.carBtnCtrl(CarDirection.Stop)
       } else if (event.type === TouchType.Down) {
-        // 如果出发触摸事件时响应相应的点击事件
-        upEvent(event);
-      } else if (event.type === TouchType.Move) {
-        // 手指触摸途中不会有相应的响应
-
+        upEvent(event)
       }
-
     }
-
-    return fun;
   }
 }
 

@@ -1,9 +1,11 @@
+/**
+ * 视频组件 - 极简风格
+ */
 import image from '@ohos.multimedia.image'
 import { carApi } from '../CarUtill/CarApi'
 import { CarEncode } from '../CarUtill/CarEncode'
 import { MjpegFramePoller } from '../utils/MjpegFramePoller'
 import { VideoConfig } from '../utils/VideoConfig'
-import { ButtonShadow } from '../styles/styles'
 
 let TAG = 'VideoComponents'
 
@@ -19,9 +21,7 @@ export struct VideoComponents {
 
   aboutToAppear(): void {
     VideoConfig.syncFromPreferences().then(() => {
-      if (VideoComponents.enabled) {
-        this.startStream()
-      }
+      if (VideoComponents.enabled) this.startStream()
     })
   }
 
@@ -39,55 +39,61 @@ export struct VideoComponents {
               .height('100%')
               .objectFit(ImageFit.Cover)
           } else {
-            Column({ space: '6vp' }) {
+            Column({ space: '8vp' }) {
+              Text('📷').fontSize('40fp')
               Text(this.streamHint)
                 .fontSize('13fp')
                 .fontColor(Color.White)
               Text(`${VideoComponents.ip}:${VideoComponents.port}`)
                 .fontSize('11fp')
-                .fontColor('#AAAAAA')
+                .fontColor('#9CA3AF')
             }
             .width('100%')
             .height('100%')
             .justifyContent(FlexAlign.Center)
+            .backgroundColor($r('app.color.surface_dark'))
           }
 
           if (this.isRecording) {
-            RedRound()
-              .width('10vp')
-              .height('10vp')
-              .position({ x: '260vp', y: '170vp' })
+            Row({ space: '4vp' }) {
+              Circle({ width: '8vp', height: '8vp' }).fill('#EF4444')
+              Text('REC').fontSize('10fp').fontColor('#EF4444')
+            }
+            .padding({ left: '8vp', right: '8vp', top: '3vp', bottom: '3vp' })
+            .backgroundColor('#99000000')
+            .borderRadius('6vp')
+            .position({ x: '8vp', y: '8vp' })
           }
         }
-        .width('300vp')
+        .width('100%')
         .height('200vp')
-        .backgroundColor(Color.Black)
         .clip(true)
-        .borderRadius('4vp')
+        .borderRadius('16vp')
 
         Row({ space: '10vp' }) {
           Button('刷新')
-            .fontSize('14fp')
-            .backgroundColor($r('app.color.card_background'))
+            .fontSize('13fp')
             .fontColor($r('app.color.text_on_light'))
-            .onClick(() => {
-              this.restartStream()
-            })
+            .backgroundColor($r('app.color.edit_text_background'))
+            .borderRadius('8vp')
+            .onClick(() => this.restartStream())
 
-          if (this.isRecording == false) {
+          if (!this.isRecording) {
             Button('拍摄')
+              .fontSize('13fp')
+              .fontColor(Color.White)
               .backgroundColor($r('app.color.button_background'))
-              .shadow(ButtonShadow)
-              .onClick(() => {
-                carApi.send(CarEncode.TakePhotosEncode())
-              })
+              .borderRadius('8vp')
+              .onClick(() => carApi.send(CarEncode.TakePhotosEncode()))
           }
 
-          Button(this.isRecording == false ? '录制' : '结束')
+          Button(this.isRecording ? '结束' : '录制')
+            .fontSize('13fp')
+            .fontColor(Color.White)
             .backgroundColor($r('app.color.button_background'))
-            .shadow(ButtonShadow)
+            .borderRadius('8vp')
             .onClick(() => {
-              if (this.isRecording == true) {
+              if (this.isRecording) {
                 carApi.send(CarEncode.CloselRecordingEncode())
               } else {
                 carApi.send(CarEncode.StartRecordingEncode())
@@ -96,7 +102,8 @@ export struct VideoComponents {
             })
         }
       } else {
-        Column({ space: '6vp' }) {
+        Column({ space: '8vp' }) {
+          Text('📷').fontSize('40fp')
           Text('未启用视频端口')
             .fontSize('15fp')
             .fontColor($r('app.color.text_on_light'))
@@ -104,15 +111,14 @@ export struct VideoComponents {
             .fontSize('12fp')
             .fontColor($r('app.color.text_muted'))
         }
-        .width('300vp')
+        .width('100%')
         .height('200vp')
         .justifyContent(FlexAlign.Center)
         .backgroundColor($r('app.color.card_background'))
-        .borderRadius('10vp')
+        .borderRadius('16vp')
         .border({ width: '1vp', color: $r('app.color.card_border'), style: BorderStyle.Dashed })
       }
     }
-    .justifyContent(FlexAlign.Center)
     .width('100%')
   }
 
@@ -133,9 +139,7 @@ export struct VideoComponents {
   }
 
   private applyFrame(pm: image.PixelMap): void {
-    if (this.framePixelMap !== undefined) {
-      this.framePixelMap.release()
-    }
+    if (this.framePixelMap !== undefined) this.framePixelMap.release()
     this.framePixelMap = pm
     this.streamHint = ''
   }
@@ -166,31 +170,5 @@ export struct VideoComponents {
 
   getVideoUrl(): string {
     return `http://${VideoComponents.ip}:${VideoComponents.port}/video_feed`
-  }
-}
-
-@Component
-struct RedRound {
-  @State isShow: boolean = true
-
-  aboutToAppear(): void {
-    setInterval(() => {
-      this.isShow = !this.isShow
-    }, 1000)
-  }
-
-  build() {
-    Text()
-      .width('10vp')
-      .height('10vp')
-      .backgroundColor(Color.Red)
-      .animation({
-        duration: 1200,
-        curve: Curve.Friction,
-        delay: 500,
-        iterations: -1,
-      })
-      .border({ radius: '5vp' })
-      .visibility(this.isShow ? Visibility.Visible : Visibility.None)
   }
 }

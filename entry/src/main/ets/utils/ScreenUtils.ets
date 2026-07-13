@@ -51,8 +51,8 @@ export namespace ScreenUtils {
     //将应用设置为横屏
     let promise = window.getLastWindow(ctx);
     promise.then((data) => {
-      //切换成横屏
-      let orientation = window.Orientation.LANDSCAPE;
+      //切换成竖屏
+      let orientation = window.Orientation.PORTRAIT;
       data.setPreferredOrientation(orientation, (err) => {
       });
     })

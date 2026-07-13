@@ -1,5 +1,5 @@
 /**
- * 遥控界面
+ * 遥控界面 - 竖屏极简风格
  */
 import router from '@ohos.router'
 import { carApi } from '../CarUtill/CarApi'
@@ -8,127 +8,137 @@ import { CarBtnComponents } from '../components/CarBtnComponents'
 import { CarRockerComponents } from '../components/CarRockerComponents'
 import { VideoComponents } from '../components/VideoComponents'
 import { VideoConfig } from '../utils/VideoConfig'
-import { ButtonShadow, CardShadow } from '../styles/styles'
 
 @Entry
 @Component
 struct RemoteControl {
   @State nowCtrlModel: CtrlModel = CtrlModel.Button
-  ctrlTextTextList: string[] = ['按钮', '摇杆']
-  ctrlModeList: CtrlModel[] = [CtrlModel.Button, CtrlModel.Rocker]
 
   aboutToAppear(): void {
     VideoConfig.syncFromPreferences()
   }
 
   build() {
-    Row({ space: '16vp' }) {
-      Column({ space: '10vp' }) {
-        Row({ space: '10vp' }) {
-          Button('返回')
-            .fontSize('14fp')
-            .fontColor($r('app.color.button_text'))
-            .backgroundColor($r('app.color.button_background'))
-            .shadow(ButtonShadow)
-            .onClick(() => router.back())
+    Column() {
+      // 顶栏
+      Row() {
+        Button({ type: ButtonType.Circle }) {
+          Text('‹').fontSize('28fp').fontColor('#6B7280')
+        }
+        .width('36vp').height('36vp')
+        .backgroundColor('#00000000')
+        .onClick(() => router.back())
 
-          Column({ space: '2vp' }) {
-            Text('单独控制')
-              .fontSize('20fp')
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.text_on_light'))
-            Text('实时视频 + 遥控驾驶')
-              .fontSize('12fp')
-              .fontColor($r('app.color.text_secondary'))
+        Text('单独控制')
+          .fontSize('18fp')
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.text_on_light'))
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+
+        Blank().width('36vp')
+      }
+      .width('100%')
+      .height('56vp')
+      .padding({ left: '14vp', right: '14vp' })
+
+      Scroll() {
+        Column({ space: '16vp' }) {
+          // 视频区域
+          Stack() {
+            VideoComponents()
+              .width('100%')
+              .height('200vp')
           }
-          .alignItems(HorizontalAlign.Start)
-        }
-        .width('100%')
+          .width('100%')
+          .height('200vp')
+          .borderRadius('16vp')
+          .clip(true)
 
-        Row({ space: '8vp' }) {
-          ForEach(this.ctrlTextTextList, (item: string, index: number) => {
-            MyTab({
-              state: this.nowCtrlModel == this.ctrlModeList[index],
-              text: item
-            }).onClick(() => {
-              this.nowCtrlModel = this.ctrlModeList[index]
-            })
-          }, (item: string) => item)
-        }
+          // 模式切换 pill
+          Row() {
+            Text('按钮模式')
+              .fontSize('13fp')
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.nowCtrlModel == CtrlModel.Button ?
+                $r('app.color.button_background') : $r('app.color.text_secondary'))
+              .padding({ left: '20vp', right: '20vp', top: '10vp', bottom: '10vp' })
+              .backgroundColor(this.nowCtrlModel == CtrlModel.Button ?
+                Color.White : '#00000000')
+              .borderRadius('10vp')
+              .onClick(() => { this.nowCtrlModel = CtrlModel.Button })
 
-        Stack() {
-          CarBtnComponents()
-            .visibility(
-              this.nowCtrlModel == CtrlModel.Button ?
-                Visibility.Visible :
-                Visibility.None
-            )
+            Text('摇杆模式')
+              .fontSize('13fp')
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.nowCtrlModel == CtrlModel.Rocker ?
+                $r('app.color.button_background') : $r('app.color.text_secondary'))
+              .padding({ left: '20vp', right: '20vp', top: '10vp', bottom: '10vp' })
+              .backgroundColor(this.nowCtrlModel == CtrlModel.Rocker ?
+                Color.White : '#00000000')
+              .borderRadius('10vp')
+              .onClick(() => { this.nowCtrlModel = CtrlModel.Rocker })
+          }
+          .padding('3vp')
+          .backgroundColor($r('app.color.edit_text_background'))
+          .borderRadius('12vp')
 
-          CarRockerComponents()
+          // 控制区
+          Stack() {
+            CarBtnComponents()
+              .visibility(
+                this.nowCtrlModel == CtrlModel.Button ?
+                  Visibility.Visible : Visibility.None
+              )
+
+            Column() {
+              CarRockerComponents()
+                .width('200vp')
+                .height('200vp')
+              Text('滑动摇杆控制运动')
+                .fontSize('11fp')
+                .fontColor($r('app.color.text_muted'))
+                .margin({ top: '12vp' })
+            }
             .width('100%')
-            .height('100%')
+            .alignItems(HorizontalAlign.Center)
             .visibility(
               this.nowCtrlModel == CtrlModel.Rocker ?
-                Visibility.Visible :
-                Visibility.None
+                Visibility.Visible : Visibility.None
             )
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .constraintSize({ maxHeight: '200vp' })
-        .padding('10vp')
-        .backgroundColor($r('app.color.card_background'))
-        .borderRadius('16vp')
-        .border({ width: '1vp', color: $r('app.color.card_border') })
-        .shadow(CardShadow)
-      }
-      .width(0)
-      .layoutWeight(1)
-      .height('100%')
-      .alignItems(HorizontalAlign.Start)
-
-      Column({ space: '8vp' }) {
-        Text('实时画面')
-          .fontSize('13fp')
-          .fontColor($r('app.color.text_secondary'))
+          }
           .width('100%')
 
-        VideoComponents()
-          .width('100%')
+          // 自动循迹开关
+          Row() {
+            Text('自动循迹')
+              .fontSize('15fp')
+              .fontWeight(FontWeight.Medium)
+              .fontColor($r('app.color.text_on_light'))
+              .layoutWeight(1)
 
-        Row() {
-          Checkbox()
-            .selectedColor($r('app.color.button_background'))
-            .onChange((value: boolean) => {
-              if (value) {
-                carApi.send(CarEncode.TrackingOpenEncode())
-              } else {
-                carApi.send(CarEncode.TrackingCloseEncode())
-              }
-            })
-          Text('自动循迹')
-            .fontSize('14fp')
-            .fontColor($r('app.color.text_on_light'))
-            .margin({ left: '6vp' })
+            Toggle({ type: ToggleType.Switch, isOn: false })
+              .selectedColor($r('app.color.button_background'))
+              .onChange((value: boolean) => {
+                if (value) {
+                  carApi.send(CarEncode.TrackingOpenEncode())
+                } else {
+                  carApi.send(CarEncode.TrackingCloseEncode())
+                }
+              })
+          }
+          .width('100%')
+          .padding('14vp')
+          .backgroundColor($r('app.color.card_background'))
+          .borderRadius('16vp')
         }
         .width('100%')
-        .padding({ left: '10vp', right: '10vp', top: '8vp', bottom: '8vp' })
-        .backgroundColor($r('app.color.card_background'))
-        .borderRadius('10vp')
-        .border({ width: '1vp', color: $r('app.color.card_border') })
+        .padding({ left: '16vp', right: '16vp', bottom: '32vp' })
       }
-      .width(0)
       .layoutWeight(1)
-      .height('100%')
     }
     .width('100%')
     .height('100%')
-    .padding({
-      left: '16vp',
-      right: '16vp',
-      top: '12vp',
-      bottom: '12vp'
-    })
     .backgroundColor($r('app.color.window_background'))
   }
 }
@@ -136,25 +146,4 @@ struct RemoteControl {
 enum CtrlModel {
   Button = 0,
   Rocker = 1,
-}
-
-@Component
-struct MyTab {
-  @Prop state: boolean = false
-  @Prop text: string = 'hello'
-  trueColor: string | Resource = $r('app.color.button_background')
-  falseColor: string | Resource = $r('app.color.card_background')
-
-  build() {
-    Text(this.text)
-      .fontSize('14fp')
-      .fontColor(this.state ? $r('app.color.button_text') : $r('app.color.text_on_light'))
-      .padding({ left: '16vp', right: '16vp', top: '6vp', bottom: '6vp' })
-      .backgroundColor(this.state ? this.trueColor : this.falseColor)
-      .borderRadius('16vp')
-      .border({
-        width: '1vp',
-        color: this.state ? $r('app.color.button_background') : $r('app.color.card_border')
-      })
-  }
 }

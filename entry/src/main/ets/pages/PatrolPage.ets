@@ -1,12 +1,11 @@
 /**
- * 智能巡检 - 事件列表（Day2 + 自动刷新）
+ * 智能巡检 - 竖屏极简风格
  */
 import router from '@ohos.router'
 import promptAction from '@ohos.promptAction'
 import { PreferencesUtils } from '../utils/PreferencesUtils'
 import { PatrolApi } from '../patrol/PatrolApi'
 import { PatrolEvent } from '../patrol/PatrolEventModel'
-import { ButtonShadow, CardShadow } from '../styles/styles'
 
 const AUTO_REFRESH_MS = 4000
 
@@ -20,6 +19,7 @@ struct PatrolPage {
   @State selected: PatrolEvent | null = null
   @State imageUrl: string = ''
   @State autoRefresh: boolean = true
+  @State showModal: boolean = false
   private refreshTimer: number = -1
 
   aboutToAppear(): void {
@@ -33,9 +33,7 @@ struct PatrolPage {
 
   startAutoRefresh() {
     this.stopAutoRefresh()
-    if (!this.autoRefresh) {
-      return
-    }
+    if (!this.autoRefresh) return
     this.refreshTimer = setInterval(() => {
       this.refreshEvents(true)
     }, AUTO_REFRESH_MS)
@@ -60,22 +58,16 @@ struct PatrolPage {
 
   async refreshEvents(silent: boolean = false) {
     if (!this.host) {
-      if (!silent) {
-        promptAction.showToast({ message: '未配置小车 IP' })
-      }
+      if (!silent) promptAction.showToast({ message: '未配置小车 IP' })
       return
     }
-    if (this.loading) {
-      return
-    }
+    if (this.loading) return
     this.loading = true
     let prevCount = this.events.length
     this.events = await PatrolApi.fetchEvents(this.host, this.patrolPort)
     this.loading = false
     if (this.events.length === 0) {
-      if (!silent) {
-        promptAction.showToast({ message: '暂无事件或服务未启动' })
-      }
+      if (!silent) promptAction.showToast({ message: '暂无事件或服务未启动' })
       this.selected = null
       this.imageUrl = ''
       return
@@ -87,8 +79,6 @@ struct PatrolPage {
       let stillExists = this.events.some((e) => e.id === this.selected?.id)
       if (!stillExists) {
         this.selectEvent(this.events[0])
-      } else {
-        this.imageUrl = PatrolApi.snapshotUrl(this.host, this.selected.snapshot, this.patrolPort)
       }
     } else {
       this.selectEvent(this.events[0])
@@ -98,192 +88,282 @@ struct PatrolPage {
   selectEvent(item: PatrolEvent) {
     this.selected = item
     this.imageUrl = PatrolApi.snapshotUrl(this.host, item.snapshot, this.patrolPort)
+    this.showModal = true
   }
 
   build() {
-    Row({ space: '12vp' }) {
-      Column({ space: '8vp' }) {
-        Row({ space: '8vp' }) {
-          Button('返回')
-            .fontSize('14fp')
-            .fontColor($r('app.color.button_text'))
-            .backgroundColor($r('app.color.button_background'))
-            .shadow(ButtonShadow)
-            .onClick(() => router.back())
-
-          Column({ space: '2vp' }) {
-            Text('智能巡检')
-              .fontSize('20fp')
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.text_on_light'))
-            Text(this.host ? `${this.host}:${this.patrolPort} · 共 ${this.events.length} 条` : '未配置小车 IP')
-              .fontSize('12fp')
-              .fontColor($r('app.color.text_secondary'))
+    Stack() {
+      Column() {
+        // 顶栏
+        Row() {
+          Button({ type: ButtonType.Circle }) {
+            Text('‹').fontSize('28fp').fontColor('#6B7280')
           }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
+          .width('36vp').height('36vp')
+          .backgroundColor('#00000000')
+          .onClick(() => router.back())
 
-          Button(this.loading ? '…' : '刷新')
-            .fontSize('14fp')
-            .fontColor($r('app.color.button_text'))
-            .backgroundColor($r('app.color.button_background'))
-            .shadow(ButtonShadow)
-            .enabled(!this.loading)
-            .onClick(() => this.refreshEvents(false))
+          Text('智能巡检')
+            .fontSize('18fp')
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.text_on_light'))
+            .layoutWeight(1)
+            .textAlign(TextAlign.Center)
+
+          Blank().width('36vp')
         }
         .width('100%')
+        .height('56vp')
+        .padding({ left: '14vp', right: '14vp' })
 
-        Row({ space: '6vp' }) {
-          Toggle({ type: ToggleType.Switch, isOn: this.autoRefresh })
-            .selectedColor($r('app.color.button_background'))
-            .onChange((on: boolean) => {
-              this.autoRefresh = on
-              if (on) {
-                this.startAutoRefresh()
-              } else {
-                this.stopAutoRefresh()
+        Scroll() {
+          Column({ space: '14vp' }) {
+            // 连接状态卡片
+            Row() {
+              Column({ space: '4vp' }) {
+                Row({ space: '6vp' }) {
+                  Circle({ width: '8vp', height: '8vp' }).fill('#22C55E')
+                  Text(`${this.host}:${this.patrolPort}`)
+                    .fontSize('14fp')
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor($r('app.color.text_on_light'))
+                }
+                Text('巡检服务运行中')
+                  .fontSize('11fp')
+                  .fontColor($r('app.color.text_secondary'))
               }
-            })
-          Text(this.autoRefresh ? '自动刷新（4 秒）' : '已暂停自动刷新')
-            .fontSize('12fp')
-            .fontColor($r('app.color.text_secondary'))
-        }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
 
-        if (this.events.length === 0 && !this.loading) {
-          Column({ space: '8vp' }) {
-            Text('暂无巡检事件')
-              .fontSize('16fp')
-              .fontColor($r('app.color.text_on_light'))
-            Text('请运行 patrol_detector 与 patrol_server')
-              .fontSize('12fp')
-              .fontColor($r('app.color.text_muted'))
+              Button() {
+                Text('刷新').fontSize('12fp')
+              }
+              .fontColor($r('app.color.button_background'))
+              .backgroundColor('#DBEAFE')
+              .borderRadius('8vp')
+              .height('32vp')
+              .enabled(!this.loading)
+              .onClick(() => this.refreshEvents(false))
+            }
+            .width('100%')
+            .padding('14vp')
+            .backgroundColor($r('app.color.card_background'))
+            .borderRadius('16vp')
+
+            // 自动刷新开关
+            Row() {
+              Text('YOLO 检测事件')
+                .fontSize('12fp')
+                .fontWeight(FontWeight.Bold)
+                .fontColor($r('app.color.text_secondary'))
+
+              Blank()
+
+              Text('自动刷新')
+                .fontSize('11fp')
+                .fontColor($r('app.color.text_muted'))
+                .margin({ right: '6vp' })
+
+              Toggle({ type: ToggleType.Switch, isOn: this.autoRefresh })
+                .selectedColor($r('app.color.button_background'))
+                .onChange((on: boolean) => {
+                  this.autoRefresh = on
+                  if (on) this.startAutoRefresh()
+                  else this.stopAutoRefresh()
+                })
+                .width('40vp')
+            }
+            .width('100%')
+            .padding({ left: '4vp', right: '4vp' })
+
+            // 事件列表
+            if (this.events.length === 0 && !this.loading) {
+              Column({ space: '10vp' }) {
+                Text('📭')
+                  .fontSize('40fp')
+                Text('暂无检测事件')
+                  .fontSize('14fp')
+                  .fontColor($r('app.color.text_muted'))
+              }
+              .width('100%')
+              .height('200vp')
+              .justifyContent(FlexAlign.Center)
+            } else {
+              List({ space: '10vp' }) {
+                ForEach(this.events, (item: PatrolEvent) => {
+                  ListItem() {
+                    this.eventCard(item)
+                  }
+                }, (item: PatrolEvent) => item.id)
+              }
+              .width('100%')
+              .scrollBar(BarState.Auto)
+            }
           }
           .width('100%')
-          .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
-        } else {
-          List({ space: '8vp' }) {
-            ForEach(this.events, (item: PatrolEvent) => {
-              ListItem() {
-                this.eventCard(item)
-              }
-            }, (item: PatrolEvent) => item.id)
-          }
-          .width('100%')
-          .layoutWeight(1)
-          .scrollBar(BarState.Auto)
-          .edgeEffect(EdgeEffect.Spring)
+          .padding({ left: '16vp', right: '16vp', bottom: '32vp' })
         }
+        .layoutWeight(1)
       }
-      .width(0)
-      .layoutWeight(1)
+      .width('100%')
       .height('100%')
+      .backgroundColor($r('app.color.window_background'))
 
-      Column({ space: '6vp' }) {
-        Text('事件截图')
-          .fontSize('14fp')
-          .fontColor($r('app.color.text_secondary'))
-          .width('100%')
-
-        if (this.imageUrl) {
-          Image(this.imageUrl)
+      // 详情弹窗
+      if (this.showModal && this.selected) {
+        Column() {
+          Column()
             .width('100%')
             .layoutWeight(1)
-            .objectFit(ImageFit.Contain)
-            .backgroundColor($r('app.color.surface_dark'))
-            .borderRadius('10vp')
-        } else {
-          Column() {
-            Text('点击左侧事件查看截图')
-              .fontSize('14fp')
-              .fontColor($r('app.color.text_muted'))
-          }
-          .width('100%')
-          .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor($r('app.color.card_background'))
-          .borderRadius('10vp')
-          .border({ width: '1vp', color: $r('app.color.card_border'), style: BorderStyle.Dashed })
-        }
+            .backgroundColor('#99000000')
+            .onClick(() => { this.showModal = false })
 
-        if (this.selected) {
-          Row({ space: '8vp' }) {
-            Text(this.selected.className)
-              .fontSize('15fp')
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.text_on_light'))
-            Text(`${(this.selected.confidence * 100).toFixed(0)}%`)
-              .fontSize('12fp')
-              .fontColor($r('app.color.accent_dark'))
-              .padding({ left: '8vp', right: '8vp', top: '2vp', bottom: '2vp' })
-              .backgroundColor($r('app.color.chip_background'))
-              .borderRadius('10vp')
-          }
-          Text(`${this.selected.time} · ${this.selected.id}`)
-            .fontSize('11fp')
-            .fontColor($r('app.color.text_muted'))
+          Column({ space: '14vp' }) {
+            Row() {
+              Text('检测详情')
+                .fontSize('16fp')
+                .fontWeight(FontWeight.Bold)
+                .fontColor($r('app.color.text_on_light'))
+              Blank()
+              Text('✕')
+                .fontSize('20fp')
+                .fontColor($r('app.color.text_secondary'))
+                .onClick(() => { this.showModal = false })
+            }
             .width('100%')
+
+            if (this.imageUrl) {
+              Image(this.imageUrl)
+                .width('100%')
+                .aspectRatio(1)
+                .objectFit(ImageFit.Cover)
+                .backgroundColor('#F3F4F6')
+                .borderRadius('16vp')
+            }
+
+            Column({ space: '10vp' }) {
+              Row({ space: '10vp' }) {
+                Column({ space: '4vp' }) {
+                  Text('类别')
+                    .fontSize('10fp')
+                    .fontColor($r('app.color.text_muted'))
+                  Text(this.selected.className)
+                    .fontSize('15fp')
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor($r('app.color.button_background'))
+                }
+                .padding('12vp')
+                .backgroundColor('#F3F4F6')
+                .borderRadius('12vp')
+                .layoutWeight(1)
+
+                Column({ space: '4vp' }) {
+                  Text('置信度')
+                    .fontSize('10fp')
+                    .fontColor($r('app.color.text_muted'))
+                  Text(`${(this.selected.confidence * 100).toFixed(1)}%`)
+                    .fontSize('15fp')
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#22C55E')
+                }
+                .padding('12vp')
+                .backgroundColor('#F3F4F6')
+                .borderRadius('12vp')
+                .layoutWeight(1)
+              }
+
+              Column({ space: '4vp' }) {
+                Text('检测时间')
+                  .fontSize('10fp')
+                  .fontColor($r('app.color.text_muted'))
+                Text(`${this.selected.time}`)
+                  .fontSize('14fp')
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor($r('app.color.text_on_light'))
+              }
+              .width('100%')
+              .padding('12vp')
+              .backgroundColor('#F3F4F6')
+              .borderRadius('12vp')
+            }
+
+            Button('返回列表')
+              .width('100%')
+              .height('48vp')
+              .fontSize('15fp')
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Color.White)
+              .backgroundColor($r('app.color.button_background'))
+              .borderRadius('12vp')
+              .onClick(() => { this.showModal = false })
+          }
+          .padding('18vp')
+          .backgroundColor(Color.White)
+          .borderRadius({ topLeft: '24vp', topRight: '24vp' })
         }
+        .width('100%')
+        .height('100%')
       }
-      .width(0)
-      .layoutWeight(1)
-      .height('100%')
     }
     .width('100%')
     .height('100%')
-    .padding({
-      left: '14vp',
-      right: '14vp',
-      top: '10vp',
-      bottom: '10vp'
-    })
-    .backgroundColor($r('app.color.window_background'))
   }
 
   @Builder
   eventCard(item: PatrolEvent) {
-    Row({ space: '10vp' }) {
-      Column({ space: '4vp' }) {
-        Text(item.time)
-          .fontSize('12fp')
-          .fontColor($r('app.color.text_muted'))
-        Text(item.className)
-          .fontSize('16fp')
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.text_on_light'))
-        Text(item.id)
-          .fontSize('10fp')
-          .fontColor($r('app.color.text_secondary'))
+    Row({ space: '12vp' }) {
+      Image(PatrolApi.snapshotUrl(this.host, item.snapshot, this.patrolPort))
+        .width('64vp').height('64vp')
+        .objectFit(ImageFit.Cover)
+        .borderRadius('12vp')
+        .backgroundColor('#F3F4F6')
+
+      Column({ space: '6vp' }) {
+        Row() {
+          Text(item.className)
+            .fontSize('14fp')
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.text_on_light'))
+          Blank()
+          Text(item.time)
+            .fontSize('10fp')
+            .fontColor($r('app.color.text_secondary'))
+        }
+        .width('100%')
+
+        Row({ space: '8vp' }) {
+          Column()
+            .layoutWeight(1)
+            .height('4vp')
+            .backgroundColor('#F3F4F6')
+            .borderRadius('2vp')
+          Column()
+            .width(`${item.confidence * 100}%`)
+            .height('4vp')
+            .backgroundColor(
+              item.confidence > 0.9 ? '#22C55E' :
+              item.confidence > 0.7 ? '#2563EB' : '#F59E0B'
+            )
+            .borderRadius('2vp')
+        }
+        .width('50%')
+
+        Row() {
+          Text(`${(item.confidence * 100).toFixed(1)}%`)
+            .fontSize('11fp')
+            .fontWeight(FontWeight.Bold)
+            .fontColor(
+              item.confidence > 0.9 ? '#16A34A' :
+              item.confidence > 0.7 ? '#2563EB' : '#D97706'
+            )
+        }
       }
-      .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-
-      Text(`${(item.confidence * 100).toFixed(0)}%`)
-        .fontSize('12fp')
-        .fontColor($r('app.color.accent_dark'))
-        .padding({ left: '8vp', right: '8vp', top: '3vp', bottom: '3vp' })
-        .backgroundColor($r('app.color.chip_background'))
-        .borderRadius('10vp')
-
-      if (item.snapshot) {
-        Image(PatrolApi.snapshotUrl(this.host, item.snapshot, this.patrolPort))
-          .width('64vp')
-          .height('48vp')
-          .objectFit(ImageFit.Cover)
-          .borderRadius('6vp')
-      }
     }
     .width('100%')
-    .padding('10vp')
+    .padding('12vp')
     .backgroundColor($r('app.color.card_background'))
-    .borderRadius('12vp')
-    .border({
-      width: this.selected?.id === item.id ? '2vp' : '1vp',
-      color: this.selected?.id === item.id ?
-        $r('app.color.button_background') :
-        $r('app.color.card_border')
-    })
-    .shadow(CardShadow)
+    .borderRadius('14vp')
     .onClick(() => this.selectEvent(item))
   }
 }
