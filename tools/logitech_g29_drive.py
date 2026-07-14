@@ -21,17 +21,24 @@ except ImportError:
 
 if IS_WIN:
     try:
-        from g29_winmm import WinmmG29, list_joystick_devices, print_device_list, find_best_device_id
+        from g29_winmm import (
+            WinmmG29, list_joystick_devices, print_device_list, find_best_device_id,
+            decode_button_mask, poll_all_winmm_buttons,
+        )
     except ImportError:
         WinmmG29 = None
         list_joystick_devices = None
         print_device_list = None
         find_best_device_id = None
+        decode_button_mask = None
+        poll_all_winmm_buttons = None
 else:
     WinmmG29 = None
     list_joystick_devices = None
     print_device_list = None
     find_best_device_id = None
+    decode_button_mask = None
+    poll_all_winmm_buttons = None
 
 # cmd 15 方向（与 App CarDirection 一致）
 DIR_STOP = 0
@@ -257,14 +264,144 @@ def draw_status(screen, font, lines):
     pygame.display.flip()
 
 
-def pump_quit():
+def pump_quit(process_joy=False):
     if pygame is None or not pygame.get_init():
         return True
     for event in pygame.event.get():
         if event.type in (pygame.QUIT, pygame.KEYDOWN):
             if event.type == pygame.QUIT or event.key == pygame.K_ESCAPE:
                 return False
+        elif process_joy:
+            if event.type == pygame.JOYBUTTONDOWN:
+                print("[事件] 按下 按钮 {0} (pygame索引 {1})".format(
+                    event.button + 1, event.button))
+            elif event.type == pygame.JOYBUTTONUP:
+                print("[事件] 松开 按钮 {0} (pygame索引 {1})".format(
+                    event.button + 1, event.button))
+            elif event.type == pygame.JOYHATMOTION:
+                print("[事件] 帽键(换挡杆) hat={0} value={1}".format(
+                    event.hat, event.value))
     return True
+
+
+def _poll_winmm_all_buttons():
+    if poll_all_winmm_buttons is None:
+        return []
+    return poll_all_winmm_buttons()
+
+
+def _read_all_buttons(reader):
+    """返回 (pressed_1based, raw_mask_or_none, num_buttons)。"""
+    if hasattr(reader, "read_raw"):
+        info = reader.read_raw()
+        n = 32
+        devices = list_joystick_devices() if list_joystick_devices else []
+        for d in devices:
+            if d["id"] == reader.device_id:
+                n = max(1, int(d["buttons"]))
+                break
+        pressed = decode_button_mask(info.dwButtons, n) if decode_button_mask else []
+        return pressed, info.dwButtons, n
+    pygame.event.pump()
+    n = reader.joy.get_numbuttons()
+    pressed = [i + 1 for i in range(n) if reader.joy.get_button(i)]
+    return pressed, None, n
+
+
+G29_AXIS_NAMES = {
+    0: "方向盘",
+    1: "离合踏板(左)",
+    2: "油门踏板(右)",
+    3: "刹车踏板(中)",
+}
+
+
+def test_buttons(reader):
+    """逐键检测：按 G29 各键（含中间喇叭）看编号。"""
+    screen, font = maybe_window("G29 Button Test")
+    print("设备: {0}".format(reader.name))
+    print("G29 轴含义: 0=方向盘 1=离合 2=油门 3=刹车")
+    print("")
+    print("【重要】脚离开踏板，双手只碰方向盘按键")
+    print("步骤 1：按 PS/Share/十字键/○□△× — 应出现 [按下] 按钮 N")
+    print("步骤 2：脚仍离开踏板，只按中间红色喇叭")
+    print("Ctrl+C 或 Esc 退出\n")
+    prev = set()
+    prev_hat = None
+    prev_winmm = {}
+    prev_axes = {}
+    saw_buttons = False
+    saw_horn_candidate = False
+    axis_hits = {}
+    last_log = 0.0
+    if hasattr(reader, "joy"):
+        for i in range(reader.joy.get_numaxes()):
+            prev_axes[i] = reader.joy.get_axis(i)
+    try:
+        while pump_quit(process_joy=True):
+            pressed, mask, n_btn = _read_all_buttons(reader)
+            cur = set(pressed)
+            for b in sorted(cur - prev):
+                saw_buttons = True
+                print("[按下] pygame 按钮 {0}".format(b))
+            for b in sorted(prev - cur):
+                print("[松开] pygame 按钮 {0}".format(b))
+            prev = cur
+
+            if hasattr(reader, "joy"):
+                for i in range(reader.joy.get_numaxes()):
+                    v = reader.joy.get_axis(i)
+                    old = prev_axes.get(i, v)
+                    if abs(v - old) >= 0.03:
+                        name = G29_AXIS_NAMES.get(i, "轴{0}".format(i))
+                        axis_hits[i] = axis_hits.get(i, 0) + 1
+                        print("[轴变化] {0}({1}): {2:+.3f} -> {3:+.3f}".format(
+                            name, i, old, v))
+                        prev_axes[i] = v
+
+                if reader.joy.get_numhats() > 0:
+                    hat = reader.joy.get_hat(0)
+                    if hat != prev_hat:
+                        print("[帽键] 换挡杆 POV = {0}".format(hat))
+                        prev_hat = hat
+
+            for dev_id, name, wmask, wpressed in _poll_winmm_all_buttons():
+                old = prev_winmm.get(dev_id, 0)
+                if wmask != old:
+                    saw_horn_candidate = True
+                    print("[winmm] id={0} name={1}".format(dev_id, name))
+                    print("        mask=0x{0:08X} 按下={1}".format(wmask, wpressed))
+                    prev_winmm[dev_id] = wmask
+
+            lines = [
+                "G29 按键测试(脚离开踏板)",
+                "按钮: {0}".format(pressed if pressed else "无"),
+                "已检测到按钮: {0}".format("是" if saw_buttons else "否"),
+            ]
+            draw_status(screen, font, lines)
+            now = time.time()
+            if now - last_log > 1.0:
+                print("--- 按钮: {0} ---".format(pressed if pressed else "[]"))
+                last_log = now
+            time.sleep(0.03)
+    except KeyboardInterrupt:
+        pass
+    print("\n========== 测试结果 ==========")
+    if saw_buttons:
+        print("已检测到面板按钮 → 记下喇叭对应的编号")
+    else:
+        print("未检测到任何 pygame 按钮（G HUB 下 G29 常见）")
+        print("喇叭在 pygame 里通常不是「按钮」，你的日志里轴2跳动是油门踏板噪声")
+    if axis_hits:
+        print("轴变化次数: {0}".format(
+            ", ".join("{0}={1}次".format(
+                G29_AXIS_NAMES.get(k, "轴{0}".format(k)), v)
+                for k, v in sorted(axis_hits.items()))))
+    print("\n下一步（二选一）:")
+    print("  A) Win+R → joy.cpl → G29 属性 → 测试 → 按喇叭看「按钮几」亮")
+    print("  B) G HUB 把喇叭绑到键盘 H，或改用 PS/○ 等能检测到的键触发播歌")
+    if pygame and pygame.get_init():
+        pygame.quit()
 
 
 def calibrate(reader, pedal_inverted):
@@ -376,6 +513,8 @@ def main():
     p.add_argument("--max-strafe", type=int, default=40)
     p.add_argument("--hz", type=float, default=20.0)
     p.add_argument("--calibrate", action="store_true")
+    p.add_argument("--test-buttons", action="store_true",
+                   help="检测 G29 各键编号（找中间喇叭用）")
     p.add_argument("--list-devices", action="store_true", help="列出 winmm 控制器")
     p.add_argument("--device-id", type=int, default=None, help="指定 winmm 设备 id")
     p.add_argument("--pedal-threshold", type=float, default=0.12,
@@ -414,6 +553,14 @@ def main():
             print("Windows 请试: python logitech_g29_drive.py --backend winmm --calibrate")
             print("并完全退出 G HUB（系统托盘右键退出）后再试")
         sys.exit(1)
+
+    if args.test_buttons:
+        low = reader.name.lower()
+        if not any(k in low for k in ("g29", "logitech", "driving", "race")):
+            print("[WARN] 当前设备不像 G29: {0}".format(reader.name))
+            print("       G HUB 已开时请试: --backend pygame --test-buttons")
+        test_buttons(reader)
+        return
 
     if args.calibrate:
         calibrate(reader, pedal_inv)

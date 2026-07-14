@@ -8,8 +8,17 @@ winmm = ctypes.windll.winmm
 JOYERR_NOERROR = 0
 JOY_RETURNALL = 0x000000FF
 
-# winmm 按钮位
+# winmm 按钮位（按钮 N 对应 1 << (N-1)）
 BTN_WINMM_1 = 0x0001
+
+
+def decode_button_mask(mask, max_buttons=32):
+    """将 dwButtons 位掩码解码为 1 起始的按钮编号列表。"""
+    pressed = []
+    for i in range(max_buttons):
+        if mask & (1 << i):
+            pressed.append(i + 1)
+    return pressed
 
 
 class JOYINFOEX(ctypes.Structure):
@@ -192,3 +201,15 @@ def print_device_list():
         print("       raw:  {0}".format(d["raw"]))
     print("\n若 name 不含 G29/Logitech，或 raw 全 32767 且不随操作变化，")
     print("请打开 Windows  joy.cpl  测试轴是否动（见 tools/README.md）")
+
+
+def poll_all_winmm_buttons():
+    """返回 [(id, name, mask, pressed_1based), ...]。"""
+    rows = []
+    for d in list_joystick_devices():
+        info = _read_raw_id(d["id"])
+        if info is None:
+            continue
+        n = max(1, int(d["buttons"]))
+        rows.append((d["id"], d["name"], info.dwButtons, decode_button_mask(info.dwButtons, n)))
+    return rows

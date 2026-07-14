@@ -4,7 +4,7 @@
 音乐伴舞：goodnight.MP3 + Rosmaster 底盘/车灯编舞。
 
 用法（Jetson 宿主机，串口不能被 ros/run / Docker n1 占用）:
-  cd ~/Rosmaster-App/rosmaster/jetson/patrol   # 或 music.py 与 goodnight.MP3 同目录
+  cd ~/ music.py 与 goodnight.MP3 同目录
   python3 music.py
 
 依赖: Rosmaster_Lib, librosa, playsound（可选）; 播放优先 mpg123/ffplay。
@@ -23,8 +23,25 @@ except ImportError:
     playsound = None
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+HOME_DIR = os.path.expanduser("~")
 DEFAULT_MUSIC = os.path.join(SCRIPT_DIR, "goodnight.MP3")
 g_debug = True
+
+
+def resolve_music_path(sound_path=None):
+    """查找 MP3：用户指定 → 脚本目录 → 家目录 → 当前目录。"""
+    if sound_path:
+        p = os.path.expanduser(sound_path)
+        if os.path.isfile(p):
+            return os.path.abspath(p)
+        print("[music] 指定路径不存在: {0}".format(p))
+
+    for d in (SCRIPT_DIR, HOME_DIR, os.getcwd()):
+        for name in ("goodnight.MP3", "goodnight.mp3", "GOODNIGHT.MP3"):
+            p = os.path.join(d, name)
+            if os.path.isfile(p):
+                return os.path.abspath(p)
+    return None
 
 
 def _alsa_device() -> str:
@@ -33,9 +50,9 @@ def _alsa_device() -> str:
 
 
 def play_music_background(sound_path: str) -> bool:
-    """Jetson 上 playsound 常无声，优先 mpg123 并指定 ALSA 设备。"""
-    if not os.path.isfile(sound_path):
-        print(f"[music] 找不到音乐文件: {sound_path}")
+    """Jetson 上优先 mpg123；勿用 stderr=PIPE 否则 mpg123 写日志会堵死无声。"""
+    if not sound_path or not os.path.isfile(sound_path):
+        print("[music] 找不到音乐文件: {0}".format(sound_path))
         return False
 
     alsa = _alsa_device()
@@ -47,18 +64,31 @@ def play_music_background(sound_path: str) -> bool:
     ]
     for cmd in players:
         try:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                start_new_session=True,
             )
-            extra = f" -a {alsa}" if cmd[0] == "mpg123" and "-a" in cmd else ""
-            print(f"[music] 正在播放: {sound_path} （{cmd[0]}{extra}）")
-            return True
+            time.sleep(0.35)
+            if proc.poll() is None:
+                extra = " -a {0}".format(alsa) if cmd[0] == "mpg123" and "-a" in cmd else ""
+                print("[music] 正在播放: {0} （{1}{2}）".format(sound_path, cmd[0], extra))
+                return True
+            # 已退出：再跑一次抓错误信息
+            diag = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=8,
+            )
+            err = diag.stderr.decode("utf-8", errors="replace").strip()
+            print("[music] {0} 未播起来: {1}".format(
+                cmd[0], err or "exit={0}".format(diag.returncode)))
         except FileNotFoundError:
             continue
         except Exception as e:
-            print(f"[music] {cmd[0]} 失败: {e}")
+            print("[music] {0} 失败: {1}".format(cmd[0], e))
 
     if playsound is not None:
         def _play():
@@ -100,14 +130,17 @@ def detect_beats(audio_path):
 
 
 def perform_actions(sound_path=None):
-    sound_path = sound_path or DEFAULT_MUSIC
-    if not os.path.isfile(sound_path):
-        sound_path = os.path.join(os.getcwd(), "goodnight.MP3")
+    sound_path = resolve_music_path(sound_path)
+    if not sound_path:
+        print("[music] 请把 goodnight.MP3 放在 ~ 或与 music.py 同目录")
+        return
 
+    print("[music] 音乐文件: {0}".format(sound_path))
     bot = Rosmaster(debug=g_debug)
     bot.create_receive_threading()
 
-    play_music_background(sound_path)
+    if not play_music_background(sound_path):
+        print("[music] 手动试: mpg123 -a {0} {1}".format(_alsa_device(), sound_path))
 
     beat_times = []
     if os.path.isfile(sound_path):
