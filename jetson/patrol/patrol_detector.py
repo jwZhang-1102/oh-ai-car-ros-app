@@ -33,6 +33,7 @@ import cv2
 import numpy as np
 import torch
 
+from alert_voice import speak_alert
 from danger_zone_utils import DangerZone, find_zone_at, load_danger_zones
 from pose_reader import AmclPoseReader, MapPose, fetch_docker_pose_once
 from rosmaster_buzzer import BuzzerController
@@ -178,6 +179,31 @@ def parse_args() -> argparse.Namespace:
         "--mission-url",
         default="http://127.0.0.1:6700/mission/alert",
         help="任务协调器告警接口（patrol_server 提供）",
+    )
+    p.add_argument(
+        "--voice-alert",
+        action="store_true",
+        help="告警时 USB 音箱语音播报（espeak-ng + aplay 或 alert_<class>.mp3）",
+    )
+    p.add_argument(
+        "--no-voice-alert",
+        action="store_true",
+        help="关闭语音播报",
+    )
+    p.add_argument(
+        "--voice-classes",
+        default="bottle",
+        help="触发语音的类别（逗号分隔），需配合 --voice-alert",
+    )
+    p.add_argument(
+        "--voice-text",
+        default="",
+        help="固定播报文案；空则按类别自动（如 bottle→检测到瓶子）",
+    )
+    p.add_argument(
+        "--voice-device",
+        default="",
+        help="ALSA 设备，默认 ALERT_VOICE_ALSA_DEVICE 或 hw:0,0",
     )
     return p.parse_args()
 
@@ -374,6 +400,20 @@ def main() -> None:
     alert_stop_classes: Set[str] = {
         t.strip() for t in args.alert_stop_classes.split(",") if t.strip()
     }
+    voice_alert = args.voice_alert and not args.no_voice_alert
+    voice_classes: Set[str] = {
+        t.strip() for t in args.voice_classes.split(",") if t.strip()
+    }
+    voice_text = args.voice_text.strip() or None
+    voice_device = args.voice_device.strip() or None
+    if voice_alert:
+        from alert_voice import default_alsa_device
+
+        print(
+            f"[patrol_detector] voice-alert: classes={sorted(voice_classes)} "
+            f"device={voice_device or default_alsa_device()}",
+            flush=True,
+        )
     if args.pause_nav_on_alert:
         print(
             f"[patrol_detector] pause-nav-on-alert: stop_classes="
@@ -640,6 +680,26 @@ def main() -> None:
                             nav_paused=nav_paused,
                             event_id=event_id,
                         )
+                        if voice_alert and cls_name in voice_classes:
+                            if speak_alert(
+                                cls_name,
+                                text=voice_text,
+                                device=voice_device,
+                                blocking=False,
+                                min_gap_sec=max(2.0, args.cooldown * 0.5),
+                            ):
+                                print(
+                                    f"[patrol_detector] voice-alert: "
+                                    f"{voice_text or cls_name}",
+                                    flush=True,
+                                )
+                            else:
+                                print(
+                                    "[patrol_detector] WARN: voice-alert 失败"
+                                    "（安装 espeak-ng: sudo apt install -y espeak-ng"
+                                    " mpg123；或放 ~/alert_bottle.mp3）",
+                                    flush=True,
+                                )
                         last_alert[cls_name] = now
                         streak[cls_name] = 0
 

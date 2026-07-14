@@ -80,11 +80,12 @@ if [ "$BACKGROUND" = true ] && [ "$BUZZER_SERIAL" = false ] && [ "$MISSION_MODE"
     DETECTOR_ARGS+=(--infer-every 3 --size 256)
   fi
   if [ "$STOP_NAV" = true ]; then
-    DETECTOR_ARGS+=(--pause-nav-on-alert --alert-stop-classes bottle)
-    echo "[patrol] 后台瓶子：检出 → 蜂鸣 + 暂停 n3（SIGSTOP，不终止 Nav2 节点）"
+    DETECTOR_ARGS+=(--pause-nav-on-alert --alert-stop-classes bottle --voice-alert)
+    echo "[patrol] 后台瓶子：检出 → 蜂鸣 + 语音 + 暂停 n3（SIGSTOP，不终止 Nav2 节点）"
     echo "[patrol] 恢复导航: curl -X POST http://127.0.0.1:6700/mission/resume  或 RViz 重设 Goal"
   else
     echo "[patrol] 后台瓶子：仅告警，不停车（--no-stop-nav）"
+    DETECTOR_ARGS+=(--voice-alert)
   fi
 fi
 if [ "$MISSION_MODE" = true ]; then

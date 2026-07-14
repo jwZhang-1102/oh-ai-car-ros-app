@@ -1,8 +1,9 @@
 @echo off
 chcp 65001 >nul
-REM 一键上传巡检+停车（n3 SIGSTOP 暂停）相关文件到小车
+REM 仅上传 start_patrol_host.sh --bg 必需文件（瓶子+蜂鸣+语音+暂停n3）
 REM 用法: deploy_mission_to_car.bat
 REM 可选: deploy_mission_to_car.bat 10.147.13.194 jetson
+REM 不上传: mission_waypoints.json / start_mission_nav.sh / MISSION.md
 
 set CAR_IP=10.147.13.194
 set CAR_USER=jetson
@@ -18,15 +19,15 @@ if errorlevel 1 (
 
 echo ========================================
 echo  上传到 %CAR_USER%@%CAR_IP%
-echo  停车策略: 告警 + SIGSTOP 暂停 n3
+echo  模式: --bg 瓶子巡检 + 蜂鸣 + 语音 + 暂停n3
 echo ========================================
 
+scp jetson/patrol/alert_voice.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
+scp jetson/patrol/patrol_detector.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
+scp jetson/patrol/patrol_server.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
 scp jetson/patrol/nav_mission_coordinator.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
 scp jetson/patrol/pose_reader.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
 scp jetson/patrol/rosmaster_buzzer.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
-scp jetson/patrol/mission_waypoints.json %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
-scp jetson/patrol/patrol_server.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
-scp jetson/patrol/patrol_detector.py %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
 scp jetson/patrol/start_patrol_host.sh %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
 scp jetson/patrol/stop_patrol_host.sh %CAR_USER%@%CAR_IP%:~/Rosmaster-App/rosmaster/
 
@@ -43,7 +44,7 @@ ssh %CAR_USER%@%CAR_IP% "cd ~/Rosmaster-App/rosmaster && sed -i 's/\r$//' *.sh &
 
 echo.
 echo ========================================
-echo  上传完成，巡检已后台重启
+echo  上传完成（8 个文件），巡检已后台重启
 echo  恢复导航: curl -X POST http://127.0.0.1:6700/mission/resume
 echo ========================================
 pause
