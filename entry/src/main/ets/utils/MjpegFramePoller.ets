@@ -2,32 +2,59 @@ import http from '@ohos.net.http'
 import image from '@ohos.multimedia.image'
 
 const TAG = 'MjpegFramePoller'
+const MAX_BUFFER = 384 * 1024
 
-/** 通过 requestInStream 持续读取 MJPEG，逐帧解码显示 */
+export interface MjpegPollerOptions {
+  /** 显示上限帧率，默认 10，减轻手机解码压力 */
+  maxFps?: number
+}
+
+/**
+ * MJPEG 帧轮询器 — 只解最新完整帧，限流显示。
+ * 不做缩放解码（desiredSize 在部分设备上会导致闪退）。
+ */
 export class MjpegFramePoller {
   private client: http.HttpRequest | null = null
   private buffer: Uint8Array = new Uint8Array(0)
   private running: boolean = false
   private decoding: boolean = false
+  private pending: boolean = false
+  private lastFrameTs: number = 0
+  private minIntervalMs: number = 100
   private frameHandler: (pixelMap: image.PixelMap) => void
   private errorHandler: (message: string) => void
+
   private dataReceiveHandler = (chunk: ArrayBuffer): void => {
     if (!this.running) {
       return
     }
     this.appendBuffer(chunk)
+    if (this.decoding) {
+      this.pending = true
+      return
+    }
     this.processBuffer()
   }
 
-  constructor(frameHandler: (pixelMap: image.PixelMap) => void, errorHandler: (message: string) => void) {
+  constructor(
+    frameHandler: (pixelMap: image.PixelMap) => void,
+    errorHandler: (message: string) => void,
+    options?: MjpegPollerOptions
+  ) {
     this.frameHandler = frameHandler
     this.errorHandler = errorHandler
+    if (options !== undefined && options.maxFps !== undefined && options.maxFps > 0) {
+      this.minIntervalMs = Math.floor(1000 / options.maxFps)
+    }
   }
 
   start(url: string): void {
     this.stop()
     this.running = true
     this.buffer = new Uint8Array(0)
+    this.decoding = false
+    this.pending = false
+    this.lastFrameTs = 0
     this.client = http.createHttp()
     this.client.on('dataReceive', this.dataReceiveHandler)
 
@@ -56,6 +83,8 @@ export class MjpegFramePoller {
       this.client = null
     }
     this.buffer = new Uint8Array(0)
+    this.decoding = false
+    this.pending = false
   }
 
   restart(url: string): void {
@@ -64,6 +93,14 @@ export class MjpegFramePoller {
 
   private appendBuffer(chunk: ArrayBuffer): void {
     let incoming = new Uint8Array(chunk)
+    if (this.buffer.length + incoming.length > MAX_BUFFER * 2) {
+      let keep = this.buffer.subarray(Math.max(0, this.buffer.length - MAX_BUFFER))
+      let merged = new Uint8Array(keep.length + incoming.length)
+      merged.set(keep, 0)
+      merged.set(incoming, keep.length)
+      this.buffer = merged
+      return
+    }
     let merged = new Uint8Array(this.buffer.length + incoming.length)
     merged.set(this.buffer, 0)
     merged.set(incoming, this.buffer.length)
@@ -71,68 +108,90 @@ export class MjpegFramePoller {
   }
 
   private processBuffer(): void {
-    if (this.decoding) {
+    if (this.decoding || !this.running) {
       return
     }
-    let frameData = MjpegFramePoller.copyFirstJpeg(this.buffer)
-    if (frameData === null) {
-      if (this.buffer.length > 512 * 1024) {
-        this.buffer = this.buffer.subarray(this.buffer.length - 128 * 1024)
-      }
+
+    let frame = this.scanLastJpeg()
+    if (frame === null) {
       return
     }
-    this.buffer = this.buffer.subarray(frameData.consumed)
+
+    this.buffer = this.buffer.subarray(frame.after)
+
+    let now = Date.now()
+    if (this.lastFrameTs > 0 && now - this.lastFrameTs < this.minIntervalMs) {
+      return
+    }
+
     this.decoding = true
-    let source = image.createImageSource(frameData.data)
+    let source = image.createImageSource(frame.jpeg)
     source.createPixelMap().then((pm: image.PixelMap) => {
       if (this.running) {
+        this.lastFrameTs = Date.now()
         this.frameHandler(pm)
       } else {
-        pm.release()
+        try {
+          pm.release()
+        } catch (_e) {
+        }
       }
     }).catch((e: Object) => {
       console.error(TAG, 'decode error ' + JSON.stringify(e))
     }).finally(() => {
-      source.release()
+      try {
+        source.release()
+      } catch (_e) {
+      }
       this.decoding = false
-      if (this.running) {
+      if (this.running && this.pending) {
+        this.pending = false
         this.processBuffer()
       }
     })
   }
 
-  private static copyFirstJpeg(bytes: Uint8Array): FrameData | null {
-    let start = -1
-    for (let i = 0; i < bytes.length - 1; i++) {
-      if (bytes[i] === 0xFF && bytes[i + 1] === 0xD8) {
-        start = i
+  private scanLastJpeg(): JpegResult | null {
+    let buf = this.buffer
+    let len = buf.length
+    if (len < 4) {
+      return null
+    }
+
+    let soi = -1
+    let eoi = -1
+    for (let i = len - 2; i >= 0; i--) {
+      if (buf[i] === 0xFF && buf[i + 1] === 0xD9) {
+        eoi = i + 2
         break
       }
     }
-    if (start < 0) {
+    if (eoi < 0) {
       return null
     }
-    let end = -1
-    for (let i = start + 2; i < bytes.length - 1; i++) {
-      if (bytes[i] === 0xFF && bytes[i + 1] === 0xD9) {
-        end = i + 2
+    for (let i = eoi - 2; i >= 0; i--) {
+      if (buf[i] === 0xFF && buf[i + 1] === 0xD8) {
+        soi = i
         break
       }
     }
-    if (end <= start) {
+    if (soi < 0 || eoi <= soi) {
       return null
     }
-    let jpegLen = end - start
+
+    let jpegLen = eoi - soi
     let out = new ArrayBuffer(jpegLen)
-    new Uint8Array(out).set(bytes.subarray(start, end))
-    let frame = new FrameData()
-    frame.data = out
-    frame.consumed = end
-    return frame
+    new Uint8Array(out).set(buf.subarray(soi, eoi))
+    return new JpegResult(out, eoi)
   }
 }
 
-class FrameData {
-  data: ArrayBuffer = new ArrayBuffer(0)
-  consumed: number = 0
+class JpegResult {
+  jpeg: ArrayBuffer
+  after: number
+
+  constructor(jpeg: ArrayBuffer, after: number) {
+    this.jpeg = jpeg
+    this.after = after
+  }
 }

@@ -1,10 +1,9 @@
 /**
- * 视频组件 - 极简风格
+ * 视频组件 — 用 Web 播 MJPEG（/index2），避免主线程 PixelMap 解码卡死
  */
-import image from '@ohos.multimedia.image'
+import web_webview from '@ohos.web.webview'
 import { carApi } from '../CarUtill/CarApi'
 import { CarEncode } from '../CarUtill/CarEncode'
-import { MjpegFramePoller } from '../utils/MjpegFramePoller'
 import { VideoConfig } from '../utils/VideoConfig'
 
 let TAG = 'VideoComponents'
@@ -15,29 +14,46 @@ export struct VideoComponents {
   public static ip: string = '10.147.13.194'
   public static enabled: boolean = true
   @State isRecording: boolean = false
-  @State framePixelMap: image.PixelMap | undefined = undefined
+  @State pageUrl: string = ''
   @State streamHint: string = '连接中…'
-  private poller: MjpegFramePoller | null = null
+  private controller: web_webview.WebviewController = new web_webview.WebviewController()
 
   aboutToAppear(): void {
+    try {
+      web_webview.WebviewController.initializeWebEngine()
+    } catch (_e) {
+    }
     VideoConfig.syncFromPreferences().then(() => {
-      if (VideoComponents.enabled) this.startStream()
+      if (VideoComponents.enabled) {
+        this.reloadPage()
+      }
     })
   }
 
   aboutToDisappear(): void {
-    this.stopStream()
+    this.pageUrl = 'about:blank'
   }
 
   build() {
     Column() {
       if (VideoComponents.enabled) {
         Stack() {
-          if (this.framePixelMap !== undefined) {
-            Image(this.framePixelMap)
+          if (this.pageUrl.length > 0) {
+            Web({ src: this.pageUrl, controller: this.controller })
               .width('100%')
               .height('100%')
-              .objectFit(ImageFit.Cover)
+              .javaScriptAccess(true)
+              .domStorageAccess(true)
+              .mixedMode(MixedMode.All)
+              .onlineImageAccess(true)
+              .darkMode(WebDarkMode.Off)
+              .onPageEnd(() => {
+                this.streamHint = ''
+              })
+              .onErrorReceive((_event) => {
+                this.streamHint = '视频加载失败，点刷新'
+                console.error(TAG, 'Web onErrorReceive')
+              })
           } else {
             Column({ space: '8vp' }) {
               Text('📷').fontSize('40fp')
@@ -52,6 +68,16 @@ export struct VideoComponents {
             .height('100%')
             .justifyContent(FlexAlign.Center)
             .backgroundColor($r('app.color.surface_dark'))
+          }
+
+          if (this.streamHint.length > 0 && this.pageUrl.length > 0) {
+            Text(this.streamHint)
+              .fontSize('11fp')
+              .fontColor(Color.White)
+              .padding('6vp')
+              .backgroundColor('#99000000')
+              .borderRadius('6vp')
+              .position({ x: '8vp', y: '8vp' })
           }
 
           if (this.isRecording) {
@@ -69,6 +95,7 @@ export struct VideoComponents {
         .height('200vp')
         .clip(true)
         .borderRadius('16vp')
+        .backgroundColor(Color.Black)
 
         Row({ space: '10vp' }) {
           Button('刷新')
@@ -76,7 +103,7 @@ export struct VideoComponents {
             .fontColor($r('app.color.text_on_light'))
             .backgroundColor($r('app.color.edit_text_background'))
             .borderRadius('8vp')
-            .onClick(() => this.restartStream())
+            .onClick(() => this.reloadPage())
 
           if (!this.isRecording) {
             Button('拍摄')
@@ -122,53 +149,10 @@ export struct VideoComponents {
     .width('100%')
   }
 
-  private startStream(): void {
-    this.stopStream()
+  private reloadPage(): void {
     this.streamHint = '连接中…'
-    let url = this.getVideoUrl()
-    console.info(TAG, 'startStream ' + url)
-    this.poller = new MjpegFramePoller(
-      (pm: image.PixelMap) => {
-        this.applyFrame(pm)
-      },
-      (msg: string) => {
-        this.streamHint = msg
-      }
-    )
-    this.poller.start(url)
-  }
-
-  private applyFrame(pm: image.PixelMap): void {
-    if (this.framePixelMap !== undefined) this.framePixelMap.release()
-    this.framePixelMap = pm
-    this.streamHint = ''
-  }
-
-  private restartStream(): void {
-    if (this.framePixelMap !== undefined) {
-      this.framePixelMap.release()
-      this.framePixelMap = undefined
-    }
-    this.streamHint = '连接中…'
-    if (this.poller !== null) {
-      this.poller.restart(this.getVideoUrl())
-    } else {
-      this.startStream()
-    }
-  }
-
-  private stopStream(): void {
-    if (this.poller !== null) {
-      this.poller.stop()
-      this.poller = null
-    }
-    if (this.framePixelMap !== undefined) {
-      this.framePixelMap.release()
-      this.framePixelMap = undefined
-    }
-  }
-
-  getVideoUrl(): string {
-    return `http://${VideoComponents.ip}:${VideoComponents.port}/video_feed`
+    // 走 /index2 HTML+img，解码在 Web 引擎，不堵 ArkUI 主线程
+    this.pageUrl = `http://${VideoComponents.ip}:${VideoComponents.port}/index2?t=${Date.now()}`
+    console.info(TAG, 'reloadPage ' + this.pageUrl)
   }
 }

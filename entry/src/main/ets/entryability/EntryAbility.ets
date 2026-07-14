@@ -10,8 +10,13 @@ import { PreferencesUtils } from '../utils/PreferencesUtils';
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
-    web_webview.WebviewController.initializeWebEngine();
+    // 初始化首选项（异步，各 getter 有 null 安全兜底）
     PreferencesUtils.getInstance().init(this.context)
+    try {
+      web_webview.WebviewController.initializeWebEngine()
+    } catch (e) {
+      hilog.error(0x0000, 'testTag', 'initializeWebEngine failed: %{public}s', JSON.stringify(e) ?? '');
+    }
   }
 
   onDestroy(): void {
@@ -19,12 +24,9 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    // Main window is created, set main page for this ability
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
     windowStage.loadContent('pages/NetworkSettings', (err) => {
-    // windowStage.loadContent('pages/MecanumWheel', (err) => {
-    // windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(0x0000, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');
         return;
@@ -32,13 +34,14 @@ export default class EntryAbility extends UIAbility {
       hilog.info(0x0000, 'testTag', 'Succeeded in loading the content.');
     });
 
-    // 设置应用为横屏
-    ScreenUtils.setLandscape(this.context)
-    // 设置屏幕常量
-    ScreenUtils.keepScreenOn(this.context, true)
-    // 设置标题栏不可见
-    // ScreenUtils.setSystemBarEnable_api9(this.context)
-    ScreenUtils.setSystemBarEnable_api10(windowStage)
+    // 保持竖屏
+    try {
+      ScreenUtils.setPortrait(this.context)
+      ScreenUtils.keepScreenOn(this.context, true)
+      ScreenUtils.setSystemBarEnable_api10(windowStage)
+    } catch (e) {
+      hilog.error(0x0000, 'testTag', 'ScreenUtils init failed: %{public}s', JSON.stringify(e) ?? '');
+    }
 
   }
 

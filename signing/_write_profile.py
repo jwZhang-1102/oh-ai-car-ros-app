@@ -1,14 +1,16 @@
-{
+# -*- coding: utf-8 -*-
+enc = open(r"D:/oh-ai-car-ros-app/signing/_enc.txt", encoding="utf-8").read().strip()
+assert len(enc) >= 32 and len(enc) % 2 == 0, (len(enc), len(enc) % 2)
+text = """{
   "app": {
     "signingConfigs": [
       {
         "name": "default",
-        "type": "OpenHarmony",
         "material": {
           "storeFile": "D:/oh-ai-car-ros-app/signing/app.p12",
-          "storePassword": "0000003144b1895db4c9be0c79771bf0e760ccc51a4482253205b8faf78f85488cc63a167b8564c8b5fb6778c3071403e974eb4140087496bbd80170c654dd1f35",
+          "storePassword": "%s",
           "keyAlias": "debugKey",
-          "keyPassword": "0000003144b1895db4c9be0c79771bf0e760ccc51a4482253205b8faf78f85488cc63a167b8564c8b5fb6778c3071403e974eb4140087496bbd80170c654dd1f35",
+          "keyPassword": "%s",
           "signAlg": "SHA256withECDSA",
           "profile": "D:/oh-ai-car-ros-app/signing/app.p7b",
           "certpath": "D:/oh-ai-car-ros-app/signing/app.cer"
@@ -53,3 +55,6 @@
     }
   ]
 }
+""" % (enc, enc)
+open(r"D:/oh-ai-car-ros-app/build-profile.json5", "w", encoding="utf-8").write(text)
+print("ok enc_len", len(enc))

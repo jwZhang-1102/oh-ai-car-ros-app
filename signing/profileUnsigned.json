@@ -1,0 +1,27 @@
+{
+    "version-name": "2.0.0",
+    "version-code": 2,
+    "app-distribution-type": "os_integration",
+    "uuid": "5027b99e-5f9e-465d-9508-a9e0134ffe18",
+    "validity": {
+        "not-before": 1610519532,
+        "not-after": 2524608000
+    },
+    "type": "release",
+    "bundle-info": {
+        "developer-id": "OpenHarmony",
+        "distribution-certificate": "-----BEGIN CERTIFICATE-----\nMIICPzCCAcSgAwIBAgIFAIQkk0gwCgYIKoZIzj0EAwIwYzELMAkGA1UEBhMCQ04x\nFDASBgNVBAoMC09wZW5IYXJtb255MRkwFwYDVQQLDBBPcGVuSGFybW9ueSBUZWFt\nMSMwIQYDVQQDDBpPcGVuSGFybW9ueSBBcHBsaWNhdGlvbiBDQTAeFw0yNjA3MTQw\nOTE1MjVaFw0zNjA3MTEwOTE1MjVaMF0xCzAJBgNVBAYTAkNOMRQwEgYDVQQKDAtP\ncGVuSGFybW9ueTEZMBcGA1UECwwQT3Blbkhhcm1vbnkgVGVhbTEdMBsGA1UEAwwU\nY29tLmhvcGVydW4uY21hcnRjYXIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASx\ntS9MCFpzdmN1jAYJxGIOAvALzPvRebW0i6fSM87SjQt2hJXfZCL1gDaxIeXcLoq5\nte2ngWvwMo8FKgI8fS3Ro2swaTAdBgNVHQ4EFgQUMheQv4GiESdXjXx3fGaAxGPR\n2sUwCQYDVR0TBAIwADAOBgNVHQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUH\nAwMwGAYMKwYBBAGPWwKCeAEDBAgwBgIBAQoBADAKBggqhkjOPQQDAgNpADBmAjEA\ntHoIZQn4oC+PCE85Y9+KFCL4FlRWAixXyHZ10z2nmhzL/ikD8Br91xB52f/8PkiT\nAjEAnZUMlUNi6Jp2l1NkMJWE/942xTdzcqI08A/+vFuq52Wxh5nOoyehW59i3lND\n+ZFX\n-----END CERTIFICATE-----\n",
+        "bundle-name": "com.hoperun.cmartcar",
+        "apl": "normal",
+        "app-feature": "hos_normal_app"
+    },
+    "acls": {
+        "allowed-acls": [
+            ""
+        ]
+    },
+    "permissions": {
+        "restricted-permissions": []
+    },
+    "issuer": "pki_internal"
+}

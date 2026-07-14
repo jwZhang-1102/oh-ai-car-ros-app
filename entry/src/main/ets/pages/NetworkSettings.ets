@@ -91,7 +91,7 @@ struct NetworkSettings {
             Row({ space: '8vp' }) {
               Text('⚠')
                 .fontSize('14fp')
-              Text('注意：摄像头端口与其它设备可能存在冲突')
+              Text('视频卡顿可试端口 6501（低延迟推流）；与巡检/YOLO 勿同时占摄像头')
                 .fontSize('12fp')
                 .fontColor('#EF4444')
             }
