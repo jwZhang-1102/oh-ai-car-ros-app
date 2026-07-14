@@ -3,6 +3,7 @@ import hilog from '@ohos.hilog';
 import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
+import web_webview from '@ohos.web.webview';
 import { ScreenUtils } from "../utils/ScreenUtils"
 import { PreferencesUtils } from '../utils/PreferencesUtils';
 
@@ -11,6 +12,11 @@ export default class EntryAbility extends UIAbility {
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
     // 初始化首选项（异步，各 getter 有 null 安全兜底）
     PreferencesUtils.getInstance().init(this.context)
+    try {
+      web_webview.WebviewController.initializeWebEngine()
+    } catch (e) {
+      hilog.error(0x0000, 'testTag', 'initializeWebEngine failed: %{public}s', JSON.stringify(e) ?? '');
+    }
   }
 
   onDestroy(): void {
@@ -30,7 +36,7 @@ export default class EntryAbility extends UIAbility {
 
     // 保持竖屏
     try {
-      ScreenUtils.setLandscape(this.context)
+      ScreenUtils.setPortrait(this.context)
       ScreenUtils.keepScreenOn(this.context, true)
       ScreenUtils.setSystemBarEnable_api10(windowStage)
     } catch (e) {

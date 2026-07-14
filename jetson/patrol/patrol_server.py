@@ -38,14 +38,30 @@ app = Flask(__name__)
 
 @app.route("/events")
 def list_events():
+    """读取 events.jsonl；单行坏 JSON 跳过，避免整页 500 导致 App 显示空列表。"""
     items = []
+    bad = 0
     if EVENTS_FILE.is_file():
-        for line in EVENTS_FILE.read_text(encoding="utf-8").splitlines():
+        try:
+            text = EVENTS_FILE.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            return jsonify({"error": "read_failed", "detail": str(e)}), 500
+        for idx, line in enumerate(text.splitlines(), 1):
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            try:
                 items.append(json.loads(line))
+            except Exception:
+                bad += 1
+                if bad <= 3:
+                    print("[patrol_server] skip bad jsonl line {0}".format(idx))
     items.reverse()
-    return jsonify(items)
+    # App 只要数组；调试时可看响应头 X-Patrol-Bad-Lines
+    resp = jsonify(items)
+    resp.headers["X-Patrol-Events"] = str(len(items))
+    resp.headers["X-Patrol-Bad-Lines"] = str(bad)
+    return resp
 
 
 @app.route("/snapshot/<path:name>")
@@ -56,9 +72,16 @@ def get_snapshot(name: str):
 @app.route("/health")
 def health():
     coord = get_coordinator()
+    n = 0
+    if EVENTS_FILE.is_file():
+        try:
+            n = sum(1 for line in EVENTS_FILE.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip())
+        except Exception:
+            n = -1
     return jsonify({
         "status": "ok",
         "events_file": str(EVENTS_FILE),
+        "events_lines": n,
         "patrol_dir": str(PATROL_DIR),
         "mission": coord.get_status(),
     })

@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-音乐伴舞：goodnight.MP3 + Rosmaster 底盘/车灯编舞。
+音乐伴舞：MP3 + Rosmaster 底盘动作（不控灯）。
 
 用法（Jetson 宿主机，串口不能被 ros/run / Docker n1 占用）:
-  cd ~/ music.py 与 goodnight.MP3 同目录
   python3 music.py
+  python3 music.py ~/goodnight.MP3
 
-依赖: Rosmaster_Lib, librosa, playsound（可选）; 播放优先 mpg123/ffplay。
+依赖: Rosmaster_Lib, mpg123/ffplay。
 """
+from __future__ import print_function
+
 import os
 import subprocess
+import sys
 import threading
 import time
 
-import librosa
 from Rosmaster_Lib import Rosmaster
 
 try:
@@ -24,7 +26,6 @@ except ImportError:
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
-DEFAULT_MUSIC = os.path.join(SCRIPT_DIR, "goodnight.MP3")
 g_debug = True
 
 
@@ -44,20 +45,34 @@ def resolve_music_path(sound_path=None):
     return None
 
 
-def _alsa_device() -> str:
-    """默认 USB 音箱 card 0；可 export MUSIC_ALSA_DEVICE=hw:3,3 改 HDMI 等。"""
-    return os.environ.get("MUSIC_ALSA_DEVICE", "hw:0,0")
+def _alsa_device():
+    """默认 USB 音箱；可用 MUSIC_ALSA_DEVICE=plughw:0,0 覆盖。"""
+    return os.environ.get("MUSIC_ALSA_DEVICE", "plughw:0,0")
 
 
-def play_music_background(sound_path: str) -> bool:
-    """Jetson 上优先 mpg123；勿用 stderr=PIPE 否则 mpg123 写日志会堵死无声。"""
+def _unmute_usb_pcm():
+    """重启后 PCM 常被置 0%，播前拉满。"""
+    try:
+        subprocess.call(
+            ["amixer", "-c", "0", "set", "PCM", "100%", "unmute"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def play_music_background(sound_path):
+    """后台启动播放；绝不阻塞等整首歌播完。"""
     if not sound_path or not os.path.isfile(sound_path):
         print("[music] 找不到音乐文件: {0}".format(sound_path))
         return False
 
+    _unmute_usb_pcm()
     alsa = _alsa_device()
     players = [
         ["mpg123", "-q", "-a", alsa, sound_path],
+        ["mpg123", "-q", "-a", "hw:0,0", sound_path],
         ["mpg123", "-q", sound_path],
         ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", sound_path],
         ["cvlc", "--play-and-exit", "--quiet", sound_path],
@@ -70,21 +85,11 @@ def play_music_background(sound_path: str) -> bool:
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-            time.sleep(0.35)
+            time.sleep(0.12)
             if proc.poll() is None:
-                extra = " -a {0}".format(alsa) if cmd[0] == "mpg123" and "-a" in cmd else ""
-                print("[music] 正在播放: {0} （{1}{2}）".format(sound_path, cmd[0], extra))
+                print("[music] 正在播放: {0} （{1}）".format(sound_path, " ".join(cmd[:3])))
                 return True
-            # 已退出：再跑一次抓错误信息
-            diag = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=8,
-            )
-            err = diag.stderr.decode("utf-8", errors="replace").strip()
-            print("[music] {0} 未播起来: {1}".format(
-                cmd[0], err or "exit={0}".format(diag.returncode)))
+            print("[music] {0} 立刻退出，试下一个…".format(cmd[0]))
         except FileNotFoundError:
             continue
         except Exception as e:
@@ -95,128 +100,76 @@ def play_music_background(sound_path: str) -> bool:
             try:
                 playsound(sound_path, block=True)
             except Exception as e:
-                print(f"[music] playsound 失败: {e}")
+                print("[music] playsound 失败: {0}".format(e))
 
         threading.Thread(target=_play, daemon=True).start()
-        print(f"[music] 正在播放: {sound_path} （playsound）")
+        print("[music] 正在播放: {0} （playsound）".format(sound_path))
         return True
 
-    print("[music] 无可用播放器，请安装: sudo apt install -y mpg123")
-    print("[music] 或: sudo apt install -y ffmpeg  （提供 ffplay）")
+    print("[music] 无可用播放器，请: sudo apt install -y mpg123")
     return False
-
-
-def headlights_async(bot, left_on, right_on, duration_ms):
-    """异步控灯：兼容新版 Rosmaster_Lib（勿用私有属性 __HEAD）。"""
-    try:
-        bot.set_headlights_control(left_on, right_on, duration_ms)
-    except Exception as e:
-        print(f"[music] headlights error: {e}")
-
-
-def start_headlights(bot, left_on, right_on, duration_ms):
-    threading.Thread(
-        target=headlights_async,
-        args=(bot, left_on, right_on, duration_ms),
-        daemon=True,
-    ).start()
-
-
-def detect_beats(audio_path):
-    y, sr = librosa.load(audio_path)
-    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
-    _, beat_frames = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr)
-    return librosa.frames_to_time(beat_frames, sr=sr)
 
 
 def perform_actions(sound_path=None):
     sound_path = resolve_music_path(sound_path)
     if not sound_path:
         print("[music] 请把 goodnight.MP3 放在 ~ 或与 music.py 同目录")
+        print("[music] 或: python3 music.py ~/goodnight.MP3")
         return
 
     print("[music] 音乐文件: {0}".format(sound_path))
+    # 先连底盘（会安静几秒），再「同时」放歌+跳舞，对拍才稳定
+    print("[music] 连接底盘…")
     bot = Rosmaster(debug=g_debug)
     bot.create_receive_threading()
+    bot.set_car_run(0, 0)
+    time.sleep(0.15)
 
     if not play_music_background(sound_path):
         print("[music] 手动试: mpg123 -a {0} {1}".format(_alsa_device(), sound_path))
-
-    beat_times = []
-    if os.path.isfile(sound_path):
-        try:
-            beat_times = detect_beats(sound_path)
-        except Exception as e:
-            print(f"[music] 节拍分析跳过: {e}")
+    print("[music] 开始跳舞（与音乐同步开场）")
 
     try:
-        start_headlights(bot, 1, 0, 400)
         bot.set_car_run(1, 20)
         time.sleep(0.4)
 
-        start_headlights(bot, 0, 1, 733)
         bot.set_car_run(4, 20)
         time.sleep(0.733)
 
-        start_headlights(bot, 1, 1, 1000)
         bot.set_car_run(1, 50)
         time.sleep(1.0)
 
-        start_headlights(bot, 0, 0, 100)
         bot.set_car_run(0, 0)
         time.sleep(0.6)
 
-        start_headlights(bot, 1, 1, 4000)
         bot.set_car_run(5, 20)
         time.sleep(3.867)
 
-        for _ in range(2):
-            start_headlights(bot, 1, 1, 200)
-            time.sleep(0.2)
-            start_headlights(bot, 0, 0, 200)
-            time.sleep(0.2)
+        time.sleep(0.8)
 
-        start_headlights(bot, 1, 1, 3083)
         bot.set_car_run(6, 20)
         time.sleep(3.083)
 
-        start_headlights(bot, 0, 0, 200)
         bot.set_car_run(1, 40)
-        time.sleep(3.99)
-        start_headlights(bot, 1, 1, 200)
-        time.sleep(0.2)
-        start_headlights(bot, 0, 0, 200)
-        time.sleep(0.2)
+        time.sleep(4.39)
 
-        start_headlights(bot, 0, 0, 3784)
         bot.set_car_run(2, 40)
         time.sleep(3.784)
 
         bot.set_car_run(4, 30)
-        for i in range(6):
-            start_headlights(bot, 0, 1 if i % 2 else 0, 500)
-            time.sleep(0.5)
-        start_headlights(bot, 0, 0, 500)
+        time.sleep(3.0)
 
         bot.set_car_run(3, 30)
-        for i in range(6):
-            start_headlights(bot, 1, 1 if i % 2 else 0, 500)
-            time.sleep(0.5)
+        time.sleep(3.0)
 
         bot.set_car_run(6, 100)
         time.sleep(3.78)
 
-        for beat_time in beat_times:
-            print(f"Detected beat at: {beat_time:.3f} seconds")
-            start_headlights(bot, 1, 1, 200)
-            time.sleep(0.1)
-            start_headlights(bot, 0, 0, 200)
-            time.sleep(0.1)
-
     finally:
         bot.set_car_run(0, 0)
-        start_headlights(bot, 0, 0, 0)
+        print("[music] 结束")
 
 
 if __name__ == "__main__":
-    perform_actions()
+    arg = sys.argv[1] if len(sys.argv) > 1 else None
+    perform_actions(arg)

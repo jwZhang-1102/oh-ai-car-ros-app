@@ -52,17 +52,19 @@ export namespace ScreenUtils {
   }
 
 
-  /**
-   * 将应用设置为横屏
-   */
+  /** 竖屏（主页默认） */
+  export function setPortrait(ctx: common.BaseContext) {
+    window.getLastWindow(ctx).then((data) => {
+      data.setPreferredOrientation(window.Orientation.PORTRAIT, (_err) => {
+      })
+    })
+  }
+
+  /** 横屏（全景/驾驶） */
   export function setLandscape(ctx: common.BaseContext) {
-    //将应用设置为横屏
-    let promise = window.getLastWindow(ctx);
-    promise.then((data) => {
-      //切换成竖屏
-      let orientation = window.Orientation.PORTRAIT;
-      data.setPreferredOrientation(orientation, (err) => {
-      });
+    window.getLastWindow(ctx).then((data) => {
+      data.setPreferredOrientation(window.Orientation.LANDSCAPE, (_err) => {
+      })
     })
   }
 
