@@ -31,16 +31,24 @@ export namespace ScreenUtils {
    * 设置导航栏，状态栏不可见，在api9以后不能使用
    */
   export async function setSystemBarEnable_api10(windowStage: window.WindowStage) {
-    let windowClass: window.Window = windowStage.getMainWindowSync(); // 获取应用主窗口
-    // 1. 设置窗口全屏
-    let isLayoutFullScreen = true;
-    windowClass.setWindowLayoutFullScreen(isLayoutFullScreen)
-      .then(() => {
-        console.info('Succeeded in setting the window layout to full-screen mode.');
-      })// .catch((err: BusinessError) => {
-      .catch((err: BusinessError) => {
-        console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
-      });
+    try {
+      let windowClass: window.Window = windowStage.getMainWindowSync(); // 获取应用主窗口
+      if (!windowClass) {
+        console.error('getMainWindowSync returned null');
+        return;
+      }
+      // 1. 设置窗口全屏
+      let isLayoutFullScreen = true;
+      windowClass.setWindowLayoutFullScreen(isLayoutFullScreen)
+        .then(() => {
+          console.info('Succeeded in setting the window layout to full-screen mode.');
+        })
+        .catch((err: BusinessError) => {
+          console.error('Failed to set the window layout to full-screen mode. Cause:' + JSON.stringify(err));
+        });
+    } catch (e) {
+      console.error('setSystemBarEnable_api10 failed: ' + JSON.stringify(e));
+    }
   }
 
 
