@@ -1,9 +1,0 @@
-{
-  "frame_id": "map",
-  "end": {
-    "x": 0.0,
-    "y": 0.0,
-    "yaw": 0.0
-  },
-  "note": "将 end 坐标改为 RViz「2D Goal Pose」的目标点（map 坐标系）。告警停车后执行: curl -X POST http://127.0.0.1:6700/mission/resume"
-}

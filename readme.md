@@ -1,222 +1,251 @@
-# 智慧小车 App + 智检哨兵（OpenHarmony + Jetson）
+# 智检哨兵：自主巡防与多模式人机协同
 
-基于 OpenHarmony / ArkTS 的 Rosmaster 小车遥控应用，并扩展 **「智检哨兵」** 视觉巡检能力：YOLO 检测、事件留痕、App 拉取告警，可选 **地图危险区 + 蜂鸣器联动**。
+基于 **OpenHarmony / ArkTS** 的 Rosmaster 小车遥控应用，并在 Jetson 上扩展视觉巡检与人机协同能力。
 
-- **包名**：`com.hoperun.cmartcar`
-- **目标平台**：OpenHarmony API 12（`runtimeOS: "OpenHarmony"`）
-- **App 控车协议**：[doc/ros_api.md](./doc/ros_api.md)
-- **Jetson 巡检脚本**：[jetson/patrol/README.md](./jetson/patrol/README.md)
-- **导航 + 巡检联调**：[jetson/patrol/INTEGRATION.md](./jetson/patrol/INTEGRATION.md)
+**能力范围以终期答辩 PPT 为准**：自主导航、YOLO 异物巡检（边走边检）、多级告警与事件留痕、鸿蒙 App（控车/视频/巡检）、罗技 G29、手势控车、音乐伴舞，以及模式切换与资源互斥说明。  
+**不包含**危险区域检测、mission 任务编排等未在 PPT 中交付的功能。
+
+需要人工控车时采用**模式切换**（停 Docker 导航 → `ros/run` → App / G29），不是导航过程中的无缝热接管。
+
+| 项 | 说明 |
+|------|------|
+| 包名 | `com.hoperun.cmartcar` |
+| 目标平台 | OpenHarmony API 12（`runtimeOS: "OpenHarmony"`） |
+| 默认小车 IP | `10.147.13.194`（可在 App 中修改） |
+| Jetson 工程目录 | `~/Rosmaster-App/rosmaster/` |
+| 团队 | 实训小组2（张经纬、曹棪、郑浩然、王才睿、李昕哲） |
+
+**相关文档**
+
+| 文档 | 内容 |
+|------|------|
+| [智能小车操作手册.md](./智能小车操作手册.md) | 演示与验收操作（推荐先看） |
+| [智能小车使用手册.md](./智能小车使用手册.md) | 亚博原厂 Docker / 建图 / 导航 |
+| [doc/ros_api.md](./doc/ros_api.md) | TCP 控车协议 |
+| [App/README.md](./App/README.md) | 鸿蒙 App 使用与工程总览 |
+| [entry/README.md](./entry/README.md) | App 主模块（entry）源码说明 |
+| [jetson/README.md](./jetson/README.md) | Jetson 脚本目录总览 |
+| [jetson/patrol/README.md](./jetson/patrol/README.md) | 巡检 / 告警 / 伴舞脚本 |
+| [tools/README.md](./tools/README.md) | 罗技 G29 控车参数 |
+| `用户手册.docx` / `项目开发文档.docx` / `项目测试文档.docx` / `需求分析报告.docx` | 提交用文档 |
 
 ---
 
 ## 功能概览
 
-### App 端
+### OpenHarmony App
 
 | 功能 | 说明 |
 |------|------|
-| 网络配置 | 小车 IP、TCP / 视频 / 巡检端口；支持「仅巡检」「仅遥控」等组合 |
-| 遥控驾驶 | 摇杆 + 方向按钮（cmd 10 / 15） |
-| 麦克纳姆轮 | 四轮独立速度（cmd 21） |
-| 实时视频 | HTTP MJPEG（6500），`MjpegFramePoller` 拉帧显示 |
-| **智能巡检** | HTTP 6700 拉事件列表、查看截图、自动刷新 |
-| 偏好存储 | IP 与各端口通过 Preferences 持久化 |
+| 网络配置 | IP、TCP 6000 / 视频 6500 / 巡检 6700；支持巡检模式、遥控+视频等组合 |
+| 遥控 / 麦轮 | 摇杆（cmd 10）+ 方向键（cmd 15）+ 麦克纳姆四轮（cmd 21） |
+| 实时视频 | HTTP MJPEG（6500），驾驶/全景页拉取 |
+| 智能巡检 | HTTP 6700：事件列表、截图、约 4s 自动刷新、置信度分级 |
+| 偏好存储 | Preferences 持久化 IP 与端口 |
 
-当前为**单车连接**：`TCPClientManager` 单例维护一条 TCP 连接，控车指令经 `CarApi` 发送。
+当前为**单车连接**：`TCPClientManager` 维护一条 TCP；控车经 `CarApi` 发送。
 
-### Jetson 端（智检哨兵）
+### Jetson 端
 
 | 功能 | 说明 |
 |------|------|
-| YOLO 检测 | `patrol_detector.py`：person / bottle 等，连续帧触发告警 |
-| 事件 HTTP | `patrol_server.py`：6700 提供 `/events`、`/snapshot`、`/health` |
-| 危险区联动 | `danger_zones.json` + map 位姿 + person → 蜂鸣（`[DANGER]`） |
-| **激光危险区** | `danger_zone_lidar.py`：人在危险区（`/scan` + map，无 YOLO） |
-| 一键启停 | `start_patrol_host.sh` / `stop_patrol_host.sh` |
-| 自检 | `verify_danger_link.sh`：多边形、位姿、蜂鸣器 |
+| 自主导航 | Docker 内 n1 / n2 / n3（Nav2），RViz 设 Pose / Goal |
+| YOLO 巡检 | `patrol_detector.py`：检出瓶子等，连续帧确认后告警 |
+| 事件服务 | `patrol_server.py`：6700 提供 `/health`、`/events`、`/snapshot` |
+| 告警 | 车体蜂鸣 + USB 语音；截图写入 `events.jsonl` |
+| 一键启停 | `start_patrol_host.sh --bg` / `stop_patrol_host.sh` |
+| 手势控车 | 容器内 MediaPipe → `/cmd_vel`（需 n1） |
+| 音乐伴舞 | 宿主机 `music.py`：播歌 + 底盘编排动作（独占串口） |
+
+### PC 端
+
+| 功能 | 说明 |
+|------|------|
+| 罗技 G29 | `tools/logitech_g29_drive.py`：踏板/方向盘 → TCP 6000（与 App 同协议） |
 
 ---
 
-## 网络与端口
+## 网络端口
 
-| 项目 | 默认端口 | 说明 |
-|------|----------|------|
-| 小车 IP | `10.147.13.194` | 网络配置页可改 |
-| TCP 控车 | **6000** | `$...#` 帧，需 `ros/run` |
-| 视频直播 | **6500** | `/index2`、`/video_feed` |
-| **巡检 HTTP** | **6700** | `/events`、`/snapshot/<文件名>` |
+| 端口 | 协议 | 用途 |
+|------|------|------|
+| **6000** | TCP | App / G29 控车（需 `ros/run`） |
+| **6500** | HTTP | 默认视频（`/index2`、`/video_feed`） |
+| **6501** | HTTP | 可选低延迟视频（需单独启动） |
+| **6700** | HTTP | 巡检（`/health`、`/events`、`/snapshot/...`） |
 
-**重要**：6500 视频与 YOLO 巡检**共用 USB 摄像头**，同一时刻建议**只开一种**（App 网络页已提示）。
+手机、PC 与小车须同一局域网。浏览器地址**必须带端口**。
 
 ```bash
-# Jetson 检查端口
-ss -tlnp | grep -E '6000|6500|6700'
+# Jetson 自检
+ss -tlnp | grep -E '6000|6500|6501|6700'
 curl -sf http://127.0.0.1:6700/health
-curl -sf http://127.0.0.1:6500/index2 -I
 ```
+
+---
+
+## 资源互斥（必读）
+
+| 不要同时开启 | 原因 |
+|--------------|------|
+| `ros/run` 与 Docker 导航（n1） | 争用底盘串口 |
+| 6500 视频与 YOLO 巡检 | 争用 USB 摄像头 |
+| `music.py` 与 `ros/run` / 导航 | 争用串口 |
+| App 与 G29 同时控车 | 共用 TCP 6000 |
+
+| 推荐组合 | 说明 |
+|----------|------|
+| n1/n2/n3 + 巡检 `--bg` | 主演示：边走边检；App 用巡检模式看 6700 |
+| 停导航 + `ros/run` + App 或 G29 | 人工遥控 |
+| 单独跑 `music.py` | 伴舞展示 |
 
 ---
 
 ## 架构
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  OpenHarmony App                                             │
-│  ├─ TCP :6000  → 遥控 / 麦轮（CarApi + CarEncode）            │
-│  ├─ HTTP :6500 → 视频（VideoComponents / MjpegFramePoller）  │
-│  └─ HTTP :6700 → 巡检（PatrolPage + PatrolApi）               │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ 局域网
-┌───────────────────────────▼─────────────────────────────────┐
-│  Jetson  ~/Rosmaster-App/rosmaster/                          │
-│  ├─ ros/run、camera_server     → 6000 / 6500（遥控模式）       │
-│  ├─ patrol_server + detector   → 6700 + YOLO（巡检模式）       │
-│  └─ Docker n1/n3（可选）       → /amcl_pose（危险区联动）      │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  OpenHarmony App                                              │
+│  ├─ TCP :6000   遥控 / 麦轮 / 驾驶                             │
+│  ├─ HTTP :6500  视频直播                                       │
+│  └─ HTTP :6700  巡检事件 / 截图                                │
+└────────────────────────────┬─────────────────────────────────┘
+                             │ 局域网
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+┌────────▼────────┐  ┌───────▼────────┐  ┌───────▼────────┐
+│ PC G29 脚本      │  │ Jetson 宿主机   │  │ Docker 导航     │
+│ → TCP 6000      │  │ 巡检 --bg:6700  │  │ n1 底盘/雷达    │
+│                 │  │ ros/run:6000   │  │ n2 RViz         │
+│                 │  │ music.py       │  │ n3 DWA 导航     │
+│                 │  │ （与 Docker    │  │ 可选手势节点    │
+│                 │  │  串口互斥）    │  │                 │
+└─────────────────┘  └────────────────┘  └─────────────────┘
 ```
 
 ---
 
-## 使用场景
+## 推荐演示流程
 
-### 场景 A：App 遥控 + 看视频
+### ① 自主巡防（主场景）
 
-1. Jetson：`ros/run`（6000）+ 摄像头服务（6500）
-2. App：勾选 **TCP + 视频**，保存并进入
-3. 进入遥控 / 麦轮页
+```bash
+cd ~/Rosmaster-App/rosmaster
+# 地图有更新时：bash sync_nav_map_to_docker.sh
 
-### 场景 B：App 智能巡检（答辩常用）
+bash start_patrol_host.sh --bg
+curl -sf http://127.0.0.1:6700/health
+```
 
-1. Jetson：
+导航（与使用手册一致）：
 
-   ```bash
-   cd ~/Rosmaster-App/rosmaster
-   bash start_patrol_host.sh          # 无窗口
-   bash start_patrol_host.sh --display # 接显示器时可看检测窗口
-   ```
+1. 宿主机：`s` 启动导航容器  
+2. 开 3 个终端，分别 `d` 进入容器后执行 `n1`、`n2`、`n3`  
+3. RViz：**2D Pose Estimate** → **2D Goal Pose**  
+4. App：**保存并进入（巡检模式）** → 智能巡检，查看告警  
 
-2. App：**保存并进入（巡检模式）** → **智能巡检** → 开启自动刷新
-3. 验证：`curl http://<小车IP>:6700/events`
+停止：导航终端 `Ctrl+C` 后 `exit`；宿主机 `t`；`bash stop_patrol_host.sh`。
 
-### 场景 C：自主导航 + 巡检 + 危险区
+### ② 人工遥控（模式切换）
 
-1. Jetson 一键导航（开 3 个终端 n1/n2/n3）：
+```bash
+t                              # 停导航容器
+bash stop_patrol_host.sh       # 需要 6500 视频时释放摄像头
+ros/run                        # 提供 6000（及默认视频）
+```
 
-   ```bash
-   cd ~/Rosmaster-App/rosmaster
-   bash start_nav_docker.sh
-   ```
-
-2. RViz：**2D Pose Estimate** → **2D Goal Pose**
-3. 宿主机：`bash start_patrol_host.sh --bg`
-4. 车进危险区 + 检出 person → `[DANGER]`
-
-详见 [jetson/patrol/INTEGRATION.md](./jetson/patrol/INTEGRATION.md)。
-
-### 场景 D：PC 罗技 G29 方向盘控车
-
-1. Jetson：`ros/run`（6000）
-2. Windows PC：G29 接 USB，`pip install pygame`
-3. 运行：[tools/logitech_g29_drive.py](./tools/logitech_g29_drive.py)（详见 [tools/README.md](./tools/README.md)）
+- **鸿蒙 App**：勾选 TCP + 视频 → 遥控 / 麦轮 / 全景  
+- **G29（Windows）**：
 
 ```cmd
 cd D:\oh-ai-car-ros-app\tools
-python logitech_g29_drive.py --ip 10.147.13.194 --max-speed 30
+python logitech_g29_drive.py --backend pygame --mode pedal --ip 10.147.13.194
+```
+
+读不到轴时可改 `--backend winmm`。详见 [tools/README.md](./tools/README.md)。
+
+### ③ 手势控车（可选）
+
+```bash
+s
+# 终端 A：d → n1
+# 终端 B：d → python3 /root/gesture_control_ros2.py
+```
+
+建议先取消导航 Goal，避免与手势争用 `/cmd_vel`。
+
+### ④ 音乐伴舞（可选）
+
+```bash
+# 先停导航与 ros/run
+amixer -c 0 set PCM 90% unmute
+python3 music.py
 ```
 
 ---
 
 ## 开发环境（App）
 
-推荐 **DevEco Studio 6.1** + **OpenHarmony SDK API 12**。
+推荐 **DevEco Studio** + **OpenHarmony SDK API 12**。
 
-### 本地配置
-
-1. 根目录 `local.properties`（已 gitignore）：
-
-   ```properties
-   sdk.dir=D:/OpenHarmonySDK
-   nodejs.dir=C:/path/to/nodejs
-   ```
-
-2. `build-profile.json5`：`compileSdkVersion` / `targetSdkVersion` = `12`，`runtimeOS: "OpenHarmony"`
-3. `hvigor/hvigor-config.json5`：`daemon: false`（避免 Windows 下 EPERM）
-
-### 运行与调试
-
-1. USB 连接 OpenHarmony 真机，Module 选 `entry`
-2. 网络配置页填写 IP，按需勾选 TCP / 视频 / 巡检
-3. 横屏运行（`module.json5` → `orientation: landscape`）
+1. 根目录 `local.properties`（已 gitignore）：`sdk.dir`、`nodejs.dir`  
+2. `build-profile.json5`：`compileSdkVersion` / `targetSdkVersion` = `12`  
+3. USB 连真机，Module 选 `entry`；网络页填 IP 后进入对应模式  
 
 ### App 常见问题
 
 | 现象 | 处理 |
 |------|------|
-| 视频黑屏 | 确认 6500 已启；与巡检不要同时占摄像头；查 IP/同网 |
-| 巡检无事件 | `curl .../6700/health`；Jetson 上 `bash start_patrol_host.sh` |
-| `EPERM` 构建失败 | 关多余 IDE 进程，删 `.hvigor` 重编 |
-| `00401008` | 运行配置 Module = `entry` |
+| 无法控车 | 确认已停导航且 `ros/run` 使 6000 在听；IP/同网正确 |
+| 视频黑屏 | 确认 6500；与巡检勿同时占摄像头 |
+| 巡检无事件 | `curl ...:6700/health`；确认已 `start_patrol_host.sh` |
+| 构建 `EPERM` | 关多余 IDE，删 `.hvigor` 重编 |
 
 ---
 
-## Jetson 脚本部署
+## Jetson 脚本说明
 
-从 Windows 上传到小车（**cmd 单行**）：
+工作目录：`~/Rosmaster-App/rosmaster/`（可将本仓库 `jetson/patrol/` 等同步上去）。
+
+| 文件 / 指令 | 作用 |
+|-------------|------|
+| `s` / `t` / `d` | 启动 / 停止 / 进入导航容器（环境快捷指令） |
+| `n1` / `n2` / `n3` | 导航基础 / RViz / DWA（容器内） |
+| `start_patrol_host.sh --bg` | 后台巡检（检测 + 6700，默认不占串口） |
+| `stop_patrol_host.sh` | 停止巡检 |
+| `patrol_detector.py` | YOLO 检测、截图、事件 |
+| `patrol_server.py` | HTTP 6700 |
+| `music.py` | 音乐伴舞 |
+| `start_low_latency_video.sh` | 可选 6501 低延迟视频 |
+| `sync_nav_map_to_docker.sh` | 地图同步到导航容器 |
+
+Windows 上传示例（按需增减文件）：
 
 ```cmd
 cd /d D:\oh-ai-car-ros-app
-scp jetson/start_nav_docker.sh jetson/patrol/patrol_detector.py jetson/patrol/patrol_server.py jetson/patrol/start_patrol_host.sh jetson/patrol/stop_patrol_host.sh jetson/patrol/danger_zones.json jetson/patrol/danger_zone_utils.py jetson/patrol/pose_reader.py jetson/patrol/rosmaster_buzzer.py jetson/patrol/verify_danger_link.sh jetson@10.147.13.194:~/Rosmaster-App/rosmaster/
+scp jetson/patrol/patrol_detector.py jetson/patrol/patrol_server.py jetson/patrol/start_patrol_host.sh jetson/patrol/stop_patrol_host.sh jetson/patrol/music.py jetson@10.147.13.194:~/Rosmaster-App/rosmaster/
 ```
 
-Jetson 工作目录：`~/Rosmaster-App/rosmaster/`
-
-| 文件 | 作用 |
-|------|------|
-| `start_nav_docker.sh` | 一键 docker start + 三终端 n1/n2/n3 |
-| `start_patrol_host.sh` | 启动 6700 + YOLO（`--display` / `--bg`） |
-| `stop_patrol_host.sh` | 停止巡检进程 |
-| `patrol_detector.py` | YOLO 检测、截图、`events.jsonl`、危险区蜂鸣 |
-| `patrol_server.py` | Flask HTTP 6700 |
-| `danger_zones.json` | RViz 标定的危险多边形 |
-| `verify_danger_link.sh` | 位姿 / 多边形 / 蜂鸣自检 |
-
-上传 shell 脚本后若报 `$'\r'` 错误：
-
-```bash
-sed -i 's/\r$//' start_nav_docker.sh start_patrol_host.sh verify_danger_link.sh
-```
+若 shell 报 `$'\r'`：`sed -i 's/\r$//' *.sh`
 
 ---
 
-## 文件结构
+## 仓库结构
 
 ```
 oh-ai-car-ros-app
-├─ doc
-│  ├─ prototype/              # 界面原型图
-│  └─ ros_api.md              # TCP 6000 协议
-├─ jetson/patrol/             # 智检哨兵 Jetson 脚本与文档
-│  ├─ patrol_detector.py
-│  ├─ patrol_server.py
-│  ├─ start_patrol_host.sh / stop_patrol_host.sh
-│  ├─ danger_zones.json
-│  ├─ danger_zone_utils.py / pose_reader.py / rosmaster_buzzer.py
-│  ├─ verify_danger_link.sh
-│  ├─ README.md
-│  └─ INTEGRATION.md
-├─ entry/src/main/ets
-│  ├─ CarUtill/               # 控车编码、CarApi
-│  ├─ components/             # 摇杆、视频、按钮
-│  ├─ pages/                  # NetworkSettings、Index、RemoteControl、PatrolPage…
-│  ├─ patrol/                 # PatrolApi、PatrolEventModel
-│  ├─ tcp/                    # TCPClientManager
-│  └─ utils/                  # Preferences、MjpegFramePoller、VideoConfig
-├─ Rocker/                    # Canvas 摇杆子模块
-├─ tools/                     # PC 端工具（G29 方向盘控车等）
-│  ├─ logitech_g29_drive.py
-│  └─ README.md
-├─ 智能小车使用手册.md         # Yahboom 原厂手册（建图、Docker、导航）
+├─ doc/
+│  ├─ prototype/           # App 界面原型
+│  └─ ros_api.md           # TCP 6000 协议
+├─ jetson/
+│  ├─ patrol/              # 巡检、告警、伴舞等
+│  └─ low_latency_mjpeg.py # 低延迟视频相关
+├─ entry/src/main/ets/     # App 主模块（控车、视频、巡检页）
+├─ Rocker/                 # 摇杆 HAR
+├─ tools/                  # G29 等 PC 工具
+├─ 智能小车操作手册.md
+├─ 智能小车使用手册.md
+├─ 用户手册.docx 等提交文档
 └─ readme.md
 ```
 
@@ -224,7 +253,7 @@ oh-ai-car-ros-app
 
 ## API 索引
 
-| 类型 | 文档 / 地址 |
+| 类型 | 地址 / 文档 |
 |------|-------------|
 | TCP 控车 | [doc/ros_api.md](./doc/ros_api.md) |
 | 视频 | `GET http://{ip}:6500/index2` |
@@ -256,16 +285,20 @@ oh-ai-car-ros-app
 
 ---
 
-## 后续规划
+## 后续规划（展望，未交付）
 
-- **多车同步遥控**：多 TCP 连接 + 广播；视频仍只显示主车
-- ~~**PC 罗技方向盘控车**~~ → 已实现，见 [tools/logitech_g29_drive.py](./tools/logitech_g29_drive.py)（G29 + pygame + TCP 6000）
-- **巡检地图钉**：事件携带 map 位姿，App 地图展示
-- **person 投影到 map**：相机标定 + 距离估算（危险区精确定位）
+终期 PPT「总结与展望」中提及的增强方向，**当前版本未实现**，仅作展望：
+
+- 告警在 App 地图上标点（异物发现位置可视化）
+- 按类别配置告警策略（如 bottle 语音、person 仅记录）
+- 航点巡航 + 巡检报告自动生成
+- 激光雷达距离与视觉联合，提升复杂场景可靠性
 
 ---
 
 ## 参考
 
-- Yahboom 小车实验流程：[智能小车使用手册.md](./智能小车使用手册.md)（3.7 建图导航、3.10 雷达警卫等）
-- 巡检脚本细节：[jetson/patrol/README.md](./jetson/patrol/README.md)
+- 操作与验收：[智能小车操作手册.md](./智能小车操作手册.md)
+- 亚博原厂流程：[智能小车使用手册.md](./智能小车使用手册.md)
+- 巡检细节：[jetson/patrol/README.md](./jetson/patrol/README.md)
+- G29：[tools/README.md](./tools/README.md)
